@@ -1,6 +1,6 @@
 import streamlit as st
+
 from dotenv import load_dotenv
-import os
 
 # Load environment variables from .env file
 load_dotenv()
@@ -299,10 +299,20 @@ if deal_tasks:
                     "Process",
                     key="process_selected",
                     disabled=st.session_state.is_processing,
+                    type="primary",
                 )
 
-                if process_button:
+                # Check if we should start processing
+                if process_button and not st.session_state.is_processing:
                     st.session_state.is_processing = True
+                    st.session_state.process_clicked = True
+                    st.rerun()
+
+                # Check if we should execute the processing
+                if (
+                    st.session_state.get("process_clicked", False)
+                    and st.session_state.is_processing
+                ):
                     try:
                         with st.spinner("Processing deals..."):
                             # Prepare list of dictionaries for selected deals
@@ -345,6 +355,7 @@ if deal_tasks:
                         st.error(f"An error occurred: {str(e)}")
                     finally:
                         st.session_state.is_processing = False
+                        st.session_state.process_clicked = False
                         st.rerun()
 
             with c2:
@@ -356,16 +367,25 @@ if deal_tasks:
                     disabled=st.session_state.is_processing,
                 )
 
-                if delete_button:
+                # Check if we should start deleting
+                if delete_button and not st.session_state.is_processing:
                     st.session_state.is_processing = True
+                    st.session_state.delete_clicked = True
+                    st.rerun()
+
+                # Check if we should execute the deletion
+                if (
+                    st.session_state.get("delete_clicked", False)
+                    and st.session_state.is_processing
+                ):
                     with st.spinner("Deleting deals..."):
                         for deal_id in selected_ids:
                             if db.delete_deal(deal_id):
                                 st.success(f"Deal {deal_id} deleted successfully!")
                             else:
                                 st.error(f"Failed to delete Deal {deal_id}")
-
                         st.session_state.is_processing = False
+                        st.session_state.delete_clicked = False
                         st.rerun()
 
 else:
