@@ -54,18 +54,11 @@ async def process_single_deal(
             return False, deal.id
 
         total_deals = len(mt_deals)
-        print(f"\nTotal deals found: {total_deals}")
 
         if total_deals > 0:
             # Process in chunks of 1000 deals
             CHUNK_SIZE = 1000
             chunks = chunk_list(mt_deals, CHUNK_SIZE)
-
-            print(f"\nProcessing Deal {deal.id}:")
-            print(f"Start: {start_datetime}")
-            print(f"End: {end_datetime}")
-            print(f"Status: {deal.status}")
-            print(f"Processing {len(chunks)} chunks of data...")
 
             # Process and insert each chunk
             for chunk_idx, chunk in enumerate(chunks, 1):
@@ -135,22 +128,10 @@ async def process_single_deal(
                     )
                     mt5_deals_to_insert.append(new_deal)
 
-                print(f"\nInserting chunk {chunk_idx}/{len(chunks)} into database:")
-                print(f"Records in chunk: {len(chunk)}")
-
                 try:
                     # Insert all deals in the chunk
                     session.add_all(mt5_deals_to_insert)
                     await session.commit()
-
-                    print(f"Successfully inserted chunk {chunk_idx}")
-                    # Print brief summary of inserted data
-                    print("\nChunk Summary:")
-                    print(f"Total Volume: {chunk_volume:,.2f}")
-                    print(f"Total Profit: {chunk_profit:,.2f}")
-                    print(f"Unique Symbols: {len(symbols)}")
-                    print(f"Unique Logins: {len(logins)}")
-                    print("-" * 80)
                 except Exception as e:
                     print(f"Error inserting chunk {chunk_idx}: {str(e)}")
                     await session.rollback()
