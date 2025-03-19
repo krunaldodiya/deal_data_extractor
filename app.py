@@ -243,10 +243,32 @@ if deal_tasks:
 
         # Checkbox column
         with cols[0]:
+            # Convert date string to datetime.date object
+            deal_date = datetime.datetime.strptime(row["Date"], "%Y-%m-%d").date()
+            today = datetime.date.today()
+
+            # Determine if checkbox should be disabled
+            is_old_date = deal_date < today
+            is_success = row["Status"] == "success"
+            should_disable = (
+                is_success and is_old_date
+            )  # Only disable if both old AND success
+
+            # Set help text based on condition
+            help_text = None
+            if is_old_date and is_success:
+                help_text = "Cannot process: Past successful deal"
+            elif is_success and deal_date == today:
+                help_text = "Can be reprocessed today"
+            elif is_old_date:
+                help_text = "Processing past date"
+
             is_checked = st.checkbox(
                 f"Select deal {row['ID']}",
                 key=f"checkbox_{row['ID']}",
                 label_visibility="collapsed",
+                disabled=should_disable,
+                help=help_text,
             )
             st.session_state.selected_rows[row["ID"]] = is_checked
 
