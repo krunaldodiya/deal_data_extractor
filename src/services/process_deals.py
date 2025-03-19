@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Tuple
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlalchemy import delete
 from models import DealTask, MT5Deal, DealStatus
 from libs.manager import get_mt5_manager
 
@@ -40,6 +41,11 @@ async def process_single_deal(
     session: AsyncSession,
 ):
     try:
+        # Delete all deals for this task directly
+        stmt = delete(MT5Deal).where(MT5Deal.deal_task_id == deal.id)
+        await session.exec(stmt)
+        await session.commit()
+
         # Convert deal date and times to datetime objects
         start_datetime = datetime.combine(deal.date, deal.start_time)
         end_datetime = datetime.combine(deal.date, deal.end_time)
