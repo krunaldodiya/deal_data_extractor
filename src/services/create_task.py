@@ -14,8 +14,8 @@ async def create_task(
 
     Args:
         date: Date in YYYY-MM-DD format
-        start_time: Time in HH:MM format
-        end_time: Time in HH:MM format
+        start_time: Time in HH:MM:SS format
+        end_time: Time in HH:MM:SS format
         session: Database session
 
     Returns:
@@ -27,8 +27,17 @@ async def create_task(
     try:
         # Parse the date and times
         task_date = datetime.strptime(date, "%Y-%m-%d").date()
-        task_start_time = datetime.strptime(start_time, "%H:%M").time()
-        task_end_time = datetime.strptime(end_time, "%H:%M").time()
+
+        # Try to parse time with seconds first, fall back to minutes-only format
+        try:
+            task_start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+        except ValueError:
+            task_start_time = datetime.strptime(start_time, "%H:%M").time()
+
+        try:
+            task_end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+        except ValueError:
+            task_end_time = datetime.strptime(end_time, "%H:%M").time()
 
         # Validate times
         if task_start_time >= task_end_time:
