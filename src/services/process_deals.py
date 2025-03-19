@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Tuple
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from models import DealTask, MT5Deal
+from models import DealTask, MT5Deal, DealStatus
 from libs.manager import get_mt5_manager
 
 # Define the most important columns for display
@@ -170,12 +170,13 @@ async def process_deals(
     try:
         # Get deals from database
         statement = select(DealTask).where(DealTask.id.in_(deal_ids))
-        result = await session.execute(statement)
-        deals = result.scalars().all()
+        results = await session.exec(statement)
+        deals = results.all()
 
         # Update status to processing for all deals
         for deal in deals:
-            deal.status = "PROCESSING"
+            deal.status = DealStatus.PROCESSING
+
         await session.commit()
 
         # Get direct manager instance
@@ -203,16 +204,18 @@ async def process_deals(
 
         # Update statuses in database
         statement = select(DealTask).where(DealTask.id.in_(successful_deals))
-        result = await session.execute(statement)
-        success_deals = result.scalars().all()
+        results = await session.exec(statement)
+        success_deals = results.all()
+
         for deal in success_deals:
-            deal.status = "SUCCESS"
+            deal.status = DealStatus.SUCCESS
 
         statement = select(DealTask).where(DealTask.id.in_(failed_deals))
-        result = await session.execute(statement)
-        failed_deals_db = result.scalars().all()
+        results = await session.exec(statement)
+        failed_deals_db = results.all()
+
         for deal in failed_deals_db:
-            deal.status = "FAILED"
+            deal.status = DealStatus.FAILED
 
         await session.commit()
 
@@ -223,10 +226,11 @@ async def process_deals(
 
         # Update all deals to failed status in case of unexpected error
         statement = select(DealTask).where(DealTask.id.in_(deal_ids))
-        result = await session.execute(statement)
-        deals = result.scalars().all()
+        results = await session.exec(statement)
+        deals = results.all()
+
         for deal in deals:
-            deal.status = "FAILED"
+            deal.status = DealStatus.FAILED
         await session.commit()
 
         return False, [], deal_ids

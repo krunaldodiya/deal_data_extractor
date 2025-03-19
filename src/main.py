@@ -49,8 +49,8 @@ async def home(request: Request, session: AsyncSession = Depends(get_session)):
     statement = select(DealTask).order_by(
         DealTask.date.desc(), DealTask.start_time.desc()
     )
-    result = await session.execute(statement)
-    tasks = result.scalars().all()
+    result = await session.exec(statement)
+    tasks = result.all()
 
     return templates.TemplateResponse(
         "index.html",
@@ -85,8 +85,8 @@ async def create_task_endpoint(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        tasks = result.scalars().all()
+        results = await session.exec(statement)
+        tasks = results.all()
         print(f"Retrieved {len(tasks)} tasks for response")
 
         # Return the updated tasks container
@@ -105,8 +105,8 @@ async def create_task_endpoint(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        tasks = result.scalars().all()
+        results = await session.exec(statement)
+        tasks = results.all()
 
         return templates.TemplateResponse(
             "tasks_table.html",
@@ -127,8 +127,8 @@ async def create_task_endpoint(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        tasks = result.scalars().all()
+        results = await session.exec(statement)
+        tasks = results.all()
 
         return templates.TemplateResponse(
             "tasks_table.html",
@@ -158,8 +158,8 @@ async def process_deals_endpoint(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        all_tasks = result.scalars().all()
+        results = await session.exec(statement)
+        all_tasks = results.all()
 
         # Return just the tasks table portion
         return templates.TemplateResponse(
@@ -205,8 +205,8 @@ async def delete_deals(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        remaining_tasks = result.scalars().all()
+        results = await session.exec(statement)
+        remaining_tasks = results.all()
 
         print(f"Remaining tasks after deletion: {len(remaining_tasks)}")
 
@@ -234,8 +234,8 @@ async def delete_deals(
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
         )
-        result = await session.execute(statement)
-        remaining_tasks = result.scalars().all()
+        results = await session.exec(statement)
+        remaining_tasks = results.all()
 
         return templates.TemplateResponse(
             "tasks_table.html",

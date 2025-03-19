@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from models import DealTask
+from models import DealTask, DealStatus
 
 
 async def create_task(
@@ -39,7 +39,7 @@ async def create_task(
             date=task_date,
             start_time=task_start_time,
             end_time=task_end_time,
-            status="PENDING",
+            status=DealStatus.PENDING,
         )
 
         session.add(task)

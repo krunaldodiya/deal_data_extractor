@@ -12,8 +12,8 @@ async def delete_task(task_id: int, session: AsyncSession) -> bool:
     try:
         # Get and delete the task
         statement = select(DealTask).where(DealTask.id == task_id)
-        result = await session.execute(statement)
-        task = result.scalar_one_or_none()
+        results = await session.exec(statement)
+        task = results.one_or_none()
 
         if task:
             await session.delete(task)
