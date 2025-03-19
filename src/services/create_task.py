@@ -1,9 +1,7 @@
 from datetime import datetime
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.exc import IntegrityError
-
-from deal_data_extractor.models import DealTask, DealStatus
+from models import DealTask
 
 
 async def create_task(

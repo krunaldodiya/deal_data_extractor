@@ -1,34 +1,27 @@
-from __future__ import annotations
-
 import os
-from datetime import datetime, time
+
+from datetime import datetime
 from typing import List
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-import pathlib
-
-from deal_data_extractor.database import init_db, get_session
-from deal_data_extractor.models import (
+from database import init_db, get_session
+from models import (
     DealTask,
-    DealTaskCreate,
-    DealTaskRead,
     DealStatus,
-    ProcessDealRequest,
-    DeleteDealRequest,
 )
-from deal_data_extractor.routes.deals import router as deals_router
-from deal_data_extractor.services.process_deals import process_deals
-from deal_data_extractor.services.delete_tasks import delete_tasks
-from deal_data_extractor.services.create_task import create_task
+from routes.deals import router as deals_router
+from services.process_deals import process_deals
+from services.delete_tasks import delete_tasks
+from services.create_task import create_task
 
 app = FastAPI(title="Deal Data Extractor")
 
 # Get project root directory
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Mount static files
 app.mount(

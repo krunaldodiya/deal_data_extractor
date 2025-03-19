@@ -25,10 +25,10 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build]
-packages = ["src/deal_data_extractor"]
+packages = ["src"]
 
 [project.scripts]
-deal-data-extractor = "deal_data_extractor.main:app"
+deal-data-extractor = "src.main:app"
 
 [tool.ruff]
 line-length = 88

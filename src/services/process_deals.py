@@ -1,11 +1,11 @@
-import asyncio
-from datetime import datetime
-from typing import List, Dict, Tuple
 import MT5Manager
+import asyncio
+
+from datetime import datetime
+from typing import List, Tuple
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-
-from deal_data_extractor.models import DealTask, DealStatus, MT5Deal
+from models import DealTask, MT5Deal
 from libs.manager import get_mt5_manager
 
 # Define the most important columns for display

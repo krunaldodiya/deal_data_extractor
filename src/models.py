@@ -1,6 +1,6 @@
 from datetime import datetime, date, time
 from typing import List, Optional
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 from enum import Enum
 from sqlalchemy import UniqueConstraint, Column, Enum as SQLEnum, BigInteger
 from pydantic import ConfigDict

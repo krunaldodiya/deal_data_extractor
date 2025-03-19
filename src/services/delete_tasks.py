@@ -1,10 +1,10 @@
-from typing import List, Tuple
+import traceback
 import asyncio
+
+from typing import List, Tuple
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-import traceback
-
-from deal_data_extractor.models import DealTask
+from models import DealTask
 
 
 async def delete_task(task_id: int, session: AsyncSession) -> bool:

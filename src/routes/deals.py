@@ -1,10 +1,8 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-from deal_data_extractor.database import get_session
-from deal_data_extractor.models import DealTask, DealStatus
-from deal_data_extractor.services.process_deals import process_deals
+from database import get_session
+from services.process_deals import process_deals
 
 router = APIRouter()
 
