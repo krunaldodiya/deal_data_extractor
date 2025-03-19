@@ -34,7 +34,10 @@ def convert_mt5_timestamp(timestamp: int) -> datetime:
 
 
 async def process_single_deal(
-    deal: DealTask, account_numbers: List[str], manager, session: AsyncSession
+    deal: DealTask,
+    account_numbers: List[str],
+    manager: MT5Manager.ManagerAPI,
+    session: AsyncSession,
 ):
     try:
         # Convert deal date and times to datetime objects
