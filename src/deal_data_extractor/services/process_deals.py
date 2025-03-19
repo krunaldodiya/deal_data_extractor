@@ -5,7 +5,7 @@ import MT5Manager
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
-from deal_data_extractor.models import DealTask, DealStatus
+from deal_data_extractor.models import DealTask, DealStatus, MT5Deal
 from libs.manager import get_mt5_manager
 
 # Define the most important columns for display
@@ -26,6 +26,11 @@ DISPLAY_COLUMNS = [
 def chunk_list(lst, chunk_size):
     """Split a list into chunks of specified size"""
     return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+
+def convert_mt5_timestamp(timestamp: int) -> datetime:
+    """Convert MT5 timestamp to Python datetime"""
+    return datetime.fromtimestamp(timestamp)
 
 
 async def process_single_deal(
@@ -61,11 +66,13 @@ async def process_single_deal(
 
             # Process and insert each chunk
             for chunk_idx, chunk in enumerate(chunks, 1):
-                deals_data = []
                 chunk_volume = 0
                 chunk_profit = 0
                 symbols = set()
                 logins = set()
+
+                # Create MT5Deal objects for the chunk
+                mt5_deals_to_insert = []
 
                 for mt_deal in chunk:
                     # Collect summary data
@@ -74,77 +81,77 @@ async def process_single_deal(
                     symbols.add(mt_deal.Symbol)
                     logins.add(mt_deal.Login)
 
-                    # Prepare data for database insertion
-                    deals_data.append(
-                        (
-                            mt_deal.Deal,
-                            mt_deal.Action,
-                            mt_deal.Comment,
-                            mt_deal.Commission,
-                            mt_deal.ContractSize,
-                            mt_deal.Dealer,
-                            mt_deal.Digits,
-                            mt_deal.DigitsCurrency,
-                            mt_deal.Entry,
-                            mt_deal.ExpertID,
-                            mt_deal.ExternalID,
-                            mt_deal.Fee,
-                            mt_deal.Flags,
-                            mt_deal.Gateway,
-                            mt_deal.Login,
-                            mt_deal.MarketAsk,
-                            mt_deal.MarketBid,
-                            mt_deal.MarketLast,
-                            mt_deal.ModificationFlags,
-                            mt_deal.ObsoleteValue,
-                            mt_deal.Order,
-                            mt_deal.PositionID,
-                            mt_deal.Price,
-                            mt_deal.PriceGateway,
-                            mt_deal.PricePosition,
-                            mt_deal.PriceSL,
-                            mt_deal.PriceTP,
-                            mt_deal.Profit,
-                            mt_deal.ProfitRaw,
-                            mt_deal.RateMargin,
-                            mt_deal.RateProfit,
-                            mt_deal.Reason,
-                            mt_deal.Storage,
-                            mt_deal.Symbol,
-                            mt_deal.TickSize,
-                            mt_deal.TickValue,
-                            mt_deal.Time,
-                            mt_deal.TimeMsc,
-                            mt_deal.Value,
-                            mt_deal.Volume,
-                            mt_deal.VolumeClosed,
-                            mt_deal.VolumeClosedExt,
-                            mt_deal.VolumeExt,
-                            deal.id,  # deal_date_id
-                        )
+                    # Convert timestamps to datetime objects
+                    deal_time = convert_mt5_timestamp(mt_deal.Time)
+
+                    # Create MT5Deal object
+                    new_deal = MT5Deal(
+                        deal_id=mt_deal.Deal,
+                        action=mt_deal.Action,
+                        comment=mt_deal.Comment,
+                        commission=mt_deal.Commission,
+                        contract_size=mt_deal.ContractSize,
+                        dealer=mt_deal.Dealer,
+                        digits=mt_deal.Digits,
+                        digits_currency=mt_deal.DigitsCurrency,
+                        entry=mt_deal.Entry,
+                        expert_id=mt_deal.ExpertID,
+                        external_id=mt_deal.ExternalID,
+                        fee=mt_deal.Fee,
+                        flags=mt_deal.Flags,
+                        gateway=mt_deal.Gateway,
+                        login=mt_deal.Login,
+                        market_ask=mt_deal.MarketAsk,
+                        market_bid=mt_deal.MarketBid,
+                        market_last=mt_deal.MarketLast,
+                        modification_flags=mt_deal.ModificationFlags,
+                        obsolete_value=mt_deal.ObsoleteValue,
+                        order_id=mt_deal.Order,
+                        position_id=mt_deal.PositionID,
+                        price=mt_deal.Price,
+                        price_gateway=mt_deal.PriceGateway,
+                        price_position=mt_deal.PricePosition,
+                        price_sl=mt_deal.PriceSL,
+                        price_tp=mt_deal.PriceTP,
+                        profit=mt_deal.Profit,
+                        profit_raw=mt_deal.ProfitRaw,
+                        rate_margin=mt_deal.RateMargin,
+                        rate_profit=mt_deal.RateProfit,
+                        reason=mt_deal.Reason,
+                        storage=mt_deal.Storage,
+                        symbol=mt_deal.Symbol,
+                        tick_size=mt_deal.TickSize,
+                        tick_value=mt_deal.TickValue,
+                        time=deal_time,
+                        time_msc=mt_deal.TimeMsc,
+                        value=mt_deal.Value,
+                        volume=mt_deal.Volume,
+                        volume_closed=mt_deal.VolumeClosed,
+                        volume_closed_ext=mt_deal.VolumeClosedExt,
+                        volume_ext=mt_deal.VolumeExt,
+                        deal_task_id=deal.id,
                     )
+                    mt5_deals_to_insert.append(new_deal)
 
                 print(f"\nInserting chunk {chunk_idx}/{len(chunks)} into database:")
                 print(f"Records in chunk: {len(chunk)}")
 
                 try:
-                    # TODO: Update this to use SQLModel
-                    # success = db.insert_mt5_deals(deals_data, deal.id)
-                    success = True  # Temporary
-                    if success:
-                        print(f"Successfully inserted chunk {chunk_idx}")
-                        # Print brief summary of inserted data
-                        print("\nChunk Summary:")
-                        print(f"Total Volume: {chunk_volume:,.2f}")
-                        print(f"Total Profit: {chunk_profit:,.2f}")
-                        print(f"Unique Symbols: {len(symbols)}")
-                        print(f"Unique Logins: {len(logins)}")
-                        print("-" * 80)
-                    else:
-                        print(f"Failed to insert chunk {chunk_idx}")
-                        return False, deal.id
+                    # Insert all deals in the chunk
+                    session.add_all(mt5_deals_to_insert)
+                    await session.commit()
+
+                    print(f"Successfully inserted chunk {chunk_idx}")
+                    # Print brief summary of inserted data
+                    print("\nChunk Summary:")
+                    print(f"Total Volume: {chunk_volume:,.2f}")
+                    print(f"Total Profit: {chunk_profit:,.2f}")
+                    print(f"Unique Symbols: {len(symbols)}")
+                    print(f"Unique Logins: {len(logins)}")
+                    print("-" * 80)
                 except Exception as e:
                     print(f"Error inserting chunk {chunk_idx}: {str(e)}")
+                    await session.rollback()
                     return False, deal.id
 
         return True, deal.id
@@ -169,7 +176,7 @@ async def process_deals(
 
         # Update status to processing for all deals
         for deal in deals:
-            deal.status = DealStatus.PROCESSING
+            deal.status = DealStatus.PROCESSING.value
         await session.commit()
 
         # Get direct manager instance
@@ -200,13 +207,13 @@ async def process_deals(
         result = await session.execute(statement)
         success_deals = result.scalars().all()
         for deal in success_deals:
-            deal.status = DealStatus.SUCCESS
+            deal.status = DealStatus.SUCCESS.value
 
         statement = select(DealTask).where(DealTask.id.in_(failed_deals))
         result = await session.execute(statement)
         failed_deals_db = result.scalars().all()
         for deal in failed_deals_db:
-            deal.status = DealStatus.PENDING  # Reset to pending on failure
+            deal.status = DealStatus.FAILED.value
 
         await session.commit()
 
@@ -220,7 +227,7 @@ async def process_deals(
         result = await session.execute(statement)
         deals = result.scalars().all()
         for deal in deals:
-            deal.status = DealStatus.PENDING  # Reset to pending on failure
+            deal.status = DealStatus.FAILED.value
         await session.commit()
 
         return False, [], deal_ids

@@ -90,7 +90,7 @@ async def create_task_endpoint(
         result = await session.execute(statement)
         tasks = result.scalars().all()
 
-        # Return just the tasks table portion
+        # Return the updated tasks container
         return templates.TemplateResponse(
             "tasks_table.html",
             {
@@ -114,7 +114,7 @@ async def create_task_endpoint(
                 "request": request,
                 "tasks": tasks,
                 "DealStatus": DealStatus,
-                "error": str(e),
+                "message": f"Error: {str(e)}",
             },
         )
     except Exception as e:
@@ -122,22 +122,17 @@ async def create_task_endpoint(
 
 
 @app.post("/process")
-async def process_deals(
+async def process_deals_endpoint(
     request: Request,
-    deal_ids: List[int] = Form(...),
+    selected_tasks: List[int] = Form(...),
     session: AsyncSession = Depends(get_session),
 ):
     """Process selected deals."""
     try:
-        # Update status to processing for selected deals
-        statement = select(DealTask).where(DealTask.id.in_(deal_ids))
-        result = await session.execute(statement)
-        tasks = result.scalars().all()
-
-        for task in tasks:
-            task.status = DealStatus.PROCESSING
-
-        await session.commit()
+        # Call the actual processing logic
+        success, successful_deals, failed_deals = await process_deals(
+            selected_tasks, session
+        )
 
         # Get updated list of all tasks
         statement = select(DealTask).order_by(
@@ -146,13 +141,18 @@ async def process_deals(
         result = await session.execute(statement)
         all_tasks = result.scalars().all()
 
+        # Return just the tasks table portion
         return templates.TemplateResponse(
-            "index.html",
+            "tasks_table.html",
             {
                 "request": request,
-                "deal_tasks": all_tasks,
-                "message": f"Processing {len(deal_ids)} deals",
-                "today": datetime.now().date(),
+                "tasks": all_tasks,
+                "DealStatus": DealStatus,
+                "message": (
+                    f"Successfully processed {len(successful_deals)} tasks"
+                    if success
+                    else f"Failed to process {len(failed_deals)} tasks"
+                ),
             },
         )
     except Exception as e:
@@ -167,8 +167,18 @@ async def delete_deals(
 ):
     """Delete selected deals."""
     try:
+        print(f"Deleting tasks: {selected_tasks}")  # Debug log
+
+        if not selected_tasks:
+            print("No tasks selected for deletion")
+            raise ValueError("No tasks selected for deletion")
+
         success, successful_deletes, failed_deletes = await delete_tasks(
             selected_tasks, session
+        )
+
+        print(
+            f"Delete result: success={success}, successful_deletes={successful_deletes}, failed_deletes={failed_deletes}"
         )
 
         # Get updated list of all tasks
@@ -177,6 +187,8 @@ async def delete_deals(
         )
         result = await session.execute(statement)
         remaining_tasks = result.scalars().all()
+
+        print(f"Remaining tasks after deletion: {len(remaining_tasks)}")
 
         # Return just the tasks table portion
         return templates.TemplateResponse(
@@ -193,4 +205,25 @@ async def delete_deals(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        import traceback
+
+        print(f"Error in delete_deals: {str(e)}")
+        print(traceback.format_exc())  # Full stack trace
+
+        # Return error response in the same format
+        statement = select(DealTask).order_by(
+            DealTask.date.desc(), DealTask.start_time.desc()
+        )
+        result = await session.execute(statement)
+        remaining_tasks = result.scalars().all()
+
+        return templates.TemplateResponse(
+            "tasks_table.html",
+            {
+                "request": request,
+                "tasks": remaining_tasks,
+                "DealStatus": DealStatus,
+                "message": f"Error: {str(e)}",
+            },
+            status_code=400,
+        )

@@ -1,66 +1,78 @@
 {% if tasks %}
-<div class="overflow-x-auto">
-  <table class="min-w-full table-auto border-t border-gray-200">
-    <thead>
-      <tr class="border-b">
-        <th class="w-8 py-3 px-4">
-          <input
-            type="checkbox"
-            id="check-all"
-            class="form-checkbox"
-            onclick="toggleAll(this)"
-          />
-        </th>
-        <th class="text-left py-3 px-4 text-gray-600">DATE</th>
-        <th class="text-left py-3 px-4 text-gray-600">START TIME</th>
-        <th class="text-left py-3 px-4 text-gray-600">END TIME</th>
-        <th class="text-left py-3 px-4 text-gray-600">STATUS</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for task in tasks %}
-      <tr class="border-b hover:bg-gray-50">
-        <td class="py-3 px-4">
-          <input
-            type="checkbox"
-            name="selected_tasks"
-            value="{{ task.id }}"
-            class="form-checkbox task-checkbox"
-            onchange="updateButtonVisibility()"
-          />
-        </td>
-        <td class="py-3 px-4">{{ task.date }}</td>
-        <td class="py-3 px-4">{{ task.start_time.strftime('%H:%M:%S') }}</td>
-        <td class="py-3 px-4">{{ task.end_time.strftime('%H:%M:%S') }}</td>
-        <td class="py-3 px-4">{{ task.status.value }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<div class="overflow-x-auto" id="tasks-container">
+  <form id="tasks-form" hx-target="#tasks-container" hx-swap="outerHTML">
+    <table class="min-w-full table-auto border-t border-gray-200">
+      <thead>
+        <tr class="border-b">
+          <th class="w-8 py-3 px-4">
+            <input
+              type="checkbox"
+              id="check-all"
+              class="form-checkbox"
+              onclick="toggleAll(this)"
+            />
+          </th>
+          <th class="text-left py-3 px-4 text-gray-600">DATE</th>
+          <th class="text-left py-3 px-4 text-gray-600">START TIME</th>
+          <th class="text-left py-3 px-4 text-gray-600">END TIME</th>
+          <th class="text-left py-3 px-4 text-gray-600">STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr class="border-b hover:bg-gray-50">
+          <td class="py-3 px-4">
+            <input
+              type="checkbox"
+              name="selected_tasks"
+              value="{{ task.id }}"
+              class="form-checkbox task-checkbox"
+              onchange="updateButtonVisibility()"
+            />
+          </td>
+          <td class="py-3 px-4">{{ task.date }}</td>
+          <td class="py-3 px-4">{{ task.start_time.strftime('%H:%M:%S') }}</td>
+          <td class="py-3 px-4">{{ task.end_time.strftime('%H:%M:%S') }}</td>
+          <td class="py-3 px-4">{{ task.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-<div id="action-buttons" class="mt-4 flex space-x-4" style="display: none">
-  <button
-    id="process-selected"
-    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-    hx-post="/process"
-    hx-include="[name='selected_tasks']"
-    hx-target="#tasks-container"
-    hx-swap="innerHTML"
+    <div id="action-buttons" class="mt-4 flex space-x-4" style="display: none">
+      <button
+        type="button"
+        id="process-selected"
+        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+        hx-post="/process"
+        hx-include="[name='selected_tasks']"
+        hx-target="#tasks-container"
+        hx-swap="outerHTML"
+      >
+        Process
+      </button>
+      <button
+        type="button"
+        id="delete-selected"
+        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+        hx-post="/delete"
+        hx-include="[name='selected_tasks']"
+        hx-target="#tasks-container"
+        hx-swap="outerHTML"
+        hx-confirm="Are you sure you want to delete the selected tasks?"
+      >
+        Delete
+      </button>
+    </div>
+  </form>
+
+  {% if message %}
+  <div
+    class="mt-4 p-4 {% if 'error' in message %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded"
   >
-    Process Selected
-  </button>
-  <button
-    id="delete-selected"
-    class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-    hx-post="/delete"
-    hx-include="[name='selected_tasks']"
-    hx-target="#tasks-container"
-    hx-swap="innerHTML"
-    hx-confirm="Are you sure you want to delete the selected tasks?"
-  >
-    Delete Selected
-  </button>
+    {{ message }}
+  </div>
+  {% endif %}
 </div>
 
 <script>
@@ -88,12 +100,126 @@
     checkAll.checked = checkboxes.length > 0 && allChecked;
   }
 
-  // Initialize button visibility on page load
-  document.addEventListener("DOMContentLoaded", updateButtonVisibility);
+  // This function helps reattach HTMX attributes to the add task form
+  // which can get lost after HTMX swaps the content
+  function fixAddTaskForm() {
+    const addTaskForm = document.getElementById("add-task-form");
+    if (addTaskForm) {
+      // Make sure the correct HTMX attributes are set
+      addTaskForm.setAttribute("hx-post", "/tasks");
+      addTaskForm.setAttribute("hx-target", "#tasks-container");
+      addTaskForm.setAttribute("hx-swap", "outerHTML");
+
+      // Find the submit button and set its ID and classes
+      const submitButton = addTaskForm.querySelector('button[type="submit"]');
+      if (submitButton) {
+        submitButton.id = "add-task-button";
+        // Make sure button has the correct classes
+        submitButton.className = "submit-btn";
+
+        // Add HTMX event handler for button state
+        addTaskForm.addEventListener("htmx:beforeRequest", function () {
+          submitButton.disabled = true;
+
+          // Save the spinner element if it exists
+          const spinner = submitButton.querySelector(".htmx-indicator");
+
+          // Update button text but preserve the spinner
+          submitButton.textContent = "Adding...";
+          if (spinner) {
+            submitButton.appendChild(spinner);
+          }
+
+          submitButton.classList.add("opacity-70", "cursor-not-allowed");
+        });
+
+        // After request - reset button to original state
+        addTaskForm.addEventListener("htmx:afterRequest", function () {
+          // Re-enable button
+          submitButton.disabled = false;
+
+          // Save the spinner element if it exists
+          const spinner = submitButton.querySelector(".htmx-indicator");
+
+          // Reset button text but preserve the spinner
+          submitButton.textContent = "Add Task";
+          if (spinner) {
+            submitButton.appendChild(spinner);
+          }
+
+          // Remove disabled styling
+          submitButton.classList.remove("opacity-70", "cursor-not-allowed");
+        });
+      }
+    }
+  }
+
+  // Manage button states during HTMX requests
+  document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    const processBtn = document.getElementById("process-selected");
+    const deleteBtn = document.getElementById("delete-selected");
+
+    if (evt.detail.requestConfig.path === "/process") {
+      // Disable both buttons
+      processBtn.disabled = true;
+      deleteBtn.disabled = true;
+      // Change text to indicate processing
+      processBtn.innerText = "Processing...";
+      // Add disabled styling
+      processBtn.classList.add("opacity-70", "cursor-not-allowed");
+      deleteBtn.classList.add("opacity-70", "cursor-not-allowed");
+    } else if (evt.detail.requestConfig.path === "/delete") {
+      // Disable both buttons
+      processBtn.disabled = true;
+      deleteBtn.disabled = true;
+      // Change text to indicate deleting
+      deleteBtn.innerText = "Deleting...";
+      // Add disabled styling
+      processBtn.classList.add("opacity-70", "cursor-not-allowed");
+      deleteBtn.classList.add("opacity-70", "cursor-not-allowed");
+    }
+  });
+
+  // Add a handler to reset the button text after the request
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    const processBtn = document.getElementById("process-selected");
+    const deleteBtn = document.getElementById("delete-selected");
+
+    if (processBtn && deleteBtn) {
+      if (evt.detail.requestConfig.path === "/process") {
+        processBtn.innerText = "Process";
+        processBtn.disabled = false;
+        processBtn.classList.remove("opacity-70", "cursor-not-allowed");
+        deleteBtn.disabled = false;
+        deleteBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      } else if (evt.detail.requestConfig.path === "/delete") {
+        deleteBtn.innerText = "Delete";
+        processBtn.disabled = false;
+        processBtn.classList.remove("opacity-70", "cursor-not-allowed");
+        deleteBtn.disabled = false;
+        deleteBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      }
+    }
+  });
+
+  // Run after htmx content is swapped
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    // Fix the add task form attributes
+    fixAddTaskForm();
+
+    // Initialize button visibility
+    updateButtonVisibility();
+  });
+
+  // Ensure form is fixed on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    fixAddTaskForm();
+    updateButtonVisibility();
+  });
 </script>
 
 {% else %}
-<div class="text-center py-8 text-gray-600">
+<div class="text-center py-8 text-gray-600" id="tasks-container">
   No deal tasks found. Add a new task using the form on the left.
 </div>
 {% endif %}

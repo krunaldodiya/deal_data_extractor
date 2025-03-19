@@ -22,6 +22,50 @@
           dateInput.value = `${year}-${month}-${day}`;
         }
       });
+
+      // Handle Add Task button state
+      document.addEventListener("DOMContentLoaded", function () {
+        const addTaskForm = document.getElementById("add-task-form");
+        const addTaskButton = document.getElementById("add-task-button");
+
+        if (addTaskForm && addTaskButton) {
+          // Before request - set button to loading state
+          addTaskForm.addEventListener("htmx:beforeRequest", function () {
+            // Disable button and change text
+            addTaskButton.disabled = true;
+
+            // Save the spinner element if it exists
+            const spinner = addTaskButton.querySelector(".htmx-indicator");
+
+            // Update button text but preserve the spinner
+            addTaskButton.textContent = "Adding...";
+            if (spinner) {
+              addTaskButton.appendChild(spinner);
+            }
+
+            // Just add disabled styling without replacing existing classes
+            addTaskButton.classList.add("opacity-70", "cursor-not-allowed");
+          });
+
+          // After request - reset button to original state
+          addTaskForm.addEventListener("htmx:afterRequest", function () {
+            // Re-enable button
+            addTaskButton.disabled = false;
+
+            // Save the spinner element if it exists
+            const spinner = addTaskButton.querySelector(".htmx-indicator");
+
+            // Reset button text but preserve the spinner
+            addTaskButton.textContent = "Add Task";
+            if (spinner) {
+              addTaskButton.appendChild(spinner);
+            }
+
+            // Remove disabled styling
+            addTaskButton.classList.remove("opacity-70", "cursor-not-allowed");
+          });
+        }
+      });
     </script>
   </head>
   <body class="bg-white">
@@ -30,9 +74,10 @@
       <div class="sidebar">
         <div class="sidebar-content">
           <form
+            id="add-task-form"
             hx-post="/tasks"
             hx-target="#tasks-container"
-            hx-swap="innerHTML"
+            hx-swap="outerHTML"
             hx-indicator="#spinner"
           >
             <input
@@ -67,7 +112,7 @@
               </div>
             </div>
 
-            <button type="submit" class="submit-btn">
+            <button type="submit" class="submit-btn" id="add-task-button">
               Add Task
               <span id="spinner" class="htmx-indicator ml-2">
                 <svg

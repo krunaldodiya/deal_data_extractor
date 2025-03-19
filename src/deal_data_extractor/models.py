@@ -2,7 +2,8 @@ from datetime import datetime, date, time
 from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 from enum import Enum
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Column, Enum as SQLEnum
+from pydantic import ConfigDict
 
 
 class DealStatus(str, Enum):
@@ -16,7 +17,12 @@ class DealTaskBase(SQLModel):
     date: date
     start_time: time
     end_time: time
-    status: DealStatus = Field(default=DealStatus.PENDING)
+    status: str = Field(
+        default="pending",
+        sa_column=Column(
+            SQLEnum(DealStatus, name="dealstatus", create_constraint=True)
+        ),
+    )
 
 
 class DealTask(DealTaskBase, table=True):
@@ -29,6 +35,8 @@ class DealTask(DealTaskBase, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     mt5_deals: List["MT5Deal"] = Relationship(back_populates="deal_task")
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
 
 class DealTaskCreate(DealTaskBase):
     pass
@@ -40,9 +48,9 @@ class DealTaskRead(DealTaskBase):
 
 
 class MT5DealBase(SQLModel):
-    deal_id: int = Field(primary_key=True)
+    deal_id: int = Field(unique=True)
     action: int
-    comment: Optional[str] = None
+    comment: str
     commission: float
     contract_size: float
     dealer: int
@@ -50,7 +58,7 @@ class MT5DealBase(SQLModel):
     digits_currency: int
     entry: int
     expert_id: int
-    external_id: Optional[str] = None
+    external_id: str
     fee: float
     flags: int
     gateway: str
@@ -59,8 +67,8 @@ class MT5DealBase(SQLModel):
     market_bid: float
     market_last: float
     modification_flags: int
-    obsolete_value: int
-    order_id: int
+    obsolete_value: float
+    order_id: Optional[int] = None
     position_id: int
     price: float
     price_gateway: float
@@ -83,11 +91,58 @@ class MT5DealBase(SQLModel):
     volume_closed: float
     volume_closed_ext: float
     volume_ext: float
-    deal_task_id: Optional[int] = Field(default=None, foreign_key="deal_tasks.id")
+    deal_task_id: int = Field(foreign_key="deal_tasks.id")
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class MT5Deal(MT5DealBase, table=True):
+class MT5Deal(SQLModel, table=True):
     __tablename__ = "deals"
+
+    deal_id: int = Field(primary_key=True)
+    action: int
+    comment: str
+    commission: float
+    contract_size: float
+    dealer: int
+    digits: int
+    digits_currency: int
+    entry: int
+    expert_id: int
+    external_id: str
+    fee: float
+    flags: int
+    gateway: str
+    login: int
+    market_ask: float
+    market_bid: float
+    market_last: float
+    modification_flags: int
+    obsolete_value: float
+    order_id: Optional[int] = None
+    position_id: int
+    price: float
+    price_gateway: float
+    price_position: float
+    price_sl: float
+    price_tp: float
+    profit: float
+    profit_raw: float
+    rate_margin: float
+    rate_profit: float
+    reason: int
+    storage: float
+    symbol: str
+    tick_size: float
+    tick_value: float
+    time: datetime
+    time_msc: int
+    value: float
+    volume: float
+    volume_closed: float
+    volume_closed_ext: float
+    volume_ext: float
+    deal_task_id: int = Field(foreign_key="deal_tasks.id")
     deal_task: Optional[DealTask] = Relationship(back_populates="mt5_deals")
 
 
@@ -96,7 +151,7 @@ class MT5DealCreate(MT5DealBase):
 
 
 class MT5DealRead(MT5DealBase):
-    pass
+    id: int
 
 
 class DealTaskResponse(SQLModel):
