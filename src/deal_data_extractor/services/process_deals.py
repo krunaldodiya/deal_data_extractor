@@ -176,7 +176,7 @@ async def process_deals(
 
         # Update status to processing for all deals
         for deal in deals:
-            deal.status = DealStatus.PROCESSING.value
+            deal.status = "PROCESSING"
         await session.commit()
 
         # Get direct manager instance
@@ -207,13 +207,13 @@ async def process_deals(
         result = await session.execute(statement)
         success_deals = result.scalars().all()
         for deal in success_deals:
-            deal.status = DealStatus.SUCCESS.value
+            deal.status = "SUCCESS"
 
         statement = select(DealTask).where(DealTask.id.in_(failed_deals))
         result = await session.execute(statement)
         failed_deals_db = result.scalars().all()
         for deal in failed_deals_db:
-            deal.status = DealStatus.FAILED.value
+            deal.status = "FAILED"
 
         await session.commit()
 
@@ -227,7 +227,7 @@ async def process_deals(
         result = await session.execute(statement)
         deals = result.scalars().all()
         for deal in deals:
-            deal.status = DealStatus.FAILED.value
+            deal.status = "FAILED"
         await session.commit()
 
         return False, [], deal_ids

@@ -1,60 +1,71 @@
 from typing import List, Tuple
+import asyncio
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import text
+import traceback
 
 from deal_data_extractor.models import DealTask, MT5Deal
 
 
+async def delete_task_with_deals(task_id: int, session: AsyncSession) -> bool:
+    """Delete a task and all its associated MT5 deals"""
+    try:
+        # First, select all the deals associated with this task
+        statement = select(MT5Deal).where(MT5Deal.deal_task_id == task_id)
+        result = await session.execute(statement)
+        deals = result.scalars().all()
+
+        # Delete the deals
+        for deal in deals:
+            await session.delete(deal)
+
+        # Then, get and delete the task
+        statement = select(DealTask).where(DealTask.id == task_id)
+        result = await session.execute(statement)
+        task = result.scalar_one_or_none()
+
+        if task:
+            await session.delete(task)
+            await session.commit()
+            return True
+        else:
+            print(f"Task {task_id} not found")
+            return False
+    except Exception as e:
+        print(f"Error deleting task {task_id}: {str(e)}")
+        print(traceback.format_exc())
+        await session.rollback()
+        return False
+
+
 async def delete_tasks(
-    deal_ids: List[int], session: AsyncSession
+    task_ids: List[int], session: AsyncSession
 ) -> Tuple[bool, List[int], List[int]]:
-    """Delete multiple tasks asynchronously.
-
-    Args:
-        deal_ids: List of task IDs to delete
-        session: Database session
-
-    Returns:
-        Tuple containing:
-        - bool: True if all tasks were deleted successfully
-        - List[int]: Successfully deleted task IDs
-        - List[int]: Failed task IDs
-    """
+    """Delete multiple tasks and their associated deals."""
     successful_deletes = []
     failed_deletes = []
 
     try:
-        # Get tasks to delete
-        statement = select(DealTask).where(DealTask.id.in_(deal_ids))
-        result = await session.execute(statement)
-        tasks = result.scalars().all()
+        # Create tasks for all task deletions
+        tasks = [delete_task_with_deals(task_id, session) for task_id in task_ids]
 
-        # Delete each task and its associated MT5 deals
-        for task in tasks:
-            try:
-                # First delete associated MT5 deals using raw SQL
-                delete_deals_sql = text(
-                    "DELETE FROM deals WHERE deal_task_id = :task_id"
-                )
-                await session.execute(delete_deals_sql, {"task_id": task.id})
+        # Run all tasks concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                # Then delete the task
-                await session.delete(task)
-                successful_deletes.append(task.id)
-            except Exception as e:
-                print(f"Failed to delete task {task.id}: {str(e)}")
-                failed_deletes.append(task.id)
-                await session.rollback()
-                continue
-
-        # Commit the changes
-        await session.commit()
+        # Process results
+        for i, result in enumerate(results):
+            task_id = task_ids[i]
+            if isinstance(result, Exception):
+                print(f"Exception in delete_tasks for task {task_id}: {str(result)}")
+                failed_deletes.append(task_id)
+            elif result:
+                successful_deletes.append(task_id)
+            else:
+                failed_deletes.append(task_id)
 
         return len(failed_deletes) == 0, successful_deletes, failed_deletes
 
     except Exception as e:
         print(f"Error in delete_tasks: {str(e)}")
-        await session.rollback()
-        # If there's an error, consider all deletions failed
-        return False, [], deal_ids
+        print(traceback.format_exc())
+        return False, [], task_ids

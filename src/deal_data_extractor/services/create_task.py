@@ -41,7 +41,7 @@ async def create_task(
             date=task_date,
             start_time=task_start_time,
             end_time=task_end_time,
-            status=DealStatus.PENDING,
+            status="PENDING",
         )
 
         session.add(task)

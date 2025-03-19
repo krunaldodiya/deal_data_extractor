@@ -33,7 +33,7 @@
           <td class="py-3 px-4">{{ task.date }}</td>
           <td class="py-3 px-4">{{ task.start_time.strftime('%H:%M:%S') }}</td>
           <td class="py-3 px-4">{{ task.end_time.strftime('%H:%M:%S') }}</td>
-          <td class="py-3 px-4">{{ task.status.value }}</td>
+          <td class="py-3 px-4">{{ task.status | upper }}</td>
         </tr>
         {% endfor %}
       </tbody>

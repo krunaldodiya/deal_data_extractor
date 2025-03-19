@@ -2,15 +2,15 @@ from datetime import datetime, date, time
 from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 from enum import Enum
-from sqlalchemy import UniqueConstraint, Column, Enum as SQLEnum
+from sqlalchemy import UniqueConstraint, Column, Enum as SQLEnum, BigInteger
 from pydantic import ConfigDict
 
 
 class DealStatus(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    SUCCESS = "success"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
 
 
 class DealTaskBase(SQLModel):
@@ -18,9 +18,16 @@ class DealTaskBase(SQLModel):
     start_time: time
     end_time: time
     status: str = Field(
-        default="pending",
+        default="PENDING",
         sa_column=Column(
-            SQLEnum(DealStatus, name="dealstatus", create_constraint=True)
+            SQLEnum(
+                "PENDING",
+                "PROCESSING",
+                "SUCCESS",
+                "FAILED",
+                name="dealstatus",
+                create_constraint=True,
+            )
         ),
     )
 
@@ -85,7 +92,7 @@ class MT5DealBase(SQLModel):
     tick_size: float
     tick_value: float
     time: datetime
-    time_msc: int
+    time_msc: int = Field(sa_column=Column(BigInteger()))
     value: float
     volume: float
     volume_closed: float
@@ -136,7 +143,7 @@ class MT5Deal(SQLModel, table=True):
     tick_size: float
     tick_value: float
     time: datetime
-    time_msc: int
+    time_msc: int = Field(sa_column=Column(BigInteger()))
     value: float
     volume: float
     volume_closed: float
