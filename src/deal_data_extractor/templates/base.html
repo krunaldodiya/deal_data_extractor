@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deal Data Extractor</title>
+    <!-- Add HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='/css/style.css') }}"
+    />
+    <script>
+      // Set default date to today
+      window.addEventListener("DOMContentLoaded", (event) => {
+        const dateInput = document.getElementById("date");
+        if (dateInput && !dateInput.value) {
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, "0");
+          const day = String(today.getDate()).padStart(2, "0");
+          dateInput.value = `${year}-${month}-${day}`;
+        }
+      });
+    </script>
+  </head>
+  <body class="bg-white">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-content">
+          <form
+            hx-post="/tasks"
+            hx-target="#tasks-container"
+            hx-swap="innerHTML"
+            hx-indicator="#spinner"
+          >
+            <input
+              type="date"
+              name="date"
+              id="date"
+              class="form-input mb-4"
+              required
+            />
+
+            <div class="flex space-between mb-4">
+              <div class="time-input">
+                <input
+                  type="time"
+                  name="start_time"
+                  id="start_time"
+                  value="00:00"
+                  class="form-input"
+                  required
+                />
+              </div>
+
+              <div class="time-input">
+                <input
+                  type="time"
+                  name="end_time"
+                  id="end_time"
+                  value="23:59"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn">
+              Add Task
+              <span id="spinner" class="htmx-indicator ml-2">
+                <svg
+                  class="animate-spin h-4 w-4 inline"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              </span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <main class="main-content p-8">
+        <h1 class="text-2xl font-bold border-b pb-4 mb-8">Deal Tasks</h1>
+        <div id="tasks-container">{% block content %}{% endblock %}</div>
+      </main>
+    </div>
+  </body>
+</html>

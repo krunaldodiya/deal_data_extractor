@@ -7,7 +7,7 @@ load_dotenv()
 
 import datetime
 import pandas as pd
-from database import Database
+from streamlit_db import Database
 from process_deals import process_deals_sync
 from delete_deals import delete_deals_sync
 

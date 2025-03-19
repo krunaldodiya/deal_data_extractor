@@ -1,0 +1,24 @@
+{% extends "base.html" %} {% block title %}{{ user.name }} - User Profile{%
+endblock %} {% block content %}
+<div class="mb-3">
+  <a href="/" class="btn btn-outline-secondary">&larr; Back to Users</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>{{ user.name }}</h2>
+  </div>
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-3">ID</dt>
+      <dd class="col-sm-9">{{ user.id }}</dd>
+
+      <dt class="col-sm-3">Name</dt>
+      <dd class="col-sm-9">{{ user.name }}</dd>
+
+      <dt class="col-sm-3">Date of Birth</dt>
+      <dd class="col-sm-9">{{ user.dob.strftime('%Y-%m-%d') }}</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

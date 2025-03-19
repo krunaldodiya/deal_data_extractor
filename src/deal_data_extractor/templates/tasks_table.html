@@ -1,0 +1,99 @@
+{% if tasks %}
+<div class="overflow-x-auto">
+  <table class="min-w-full table-auto border-t border-gray-200">
+    <thead>
+      <tr class="border-b">
+        <th class="w-8 py-3 px-4">
+          <input
+            type="checkbox"
+            id="check-all"
+            class="form-checkbox"
+            onclick="toggleAll(this)"
+          />
+        </th>
+        <th class="text-left py-3 px-4 text-gray-600">DATE</th>
+        <th class="text-left py-3 px-4 text-gray-600">START TIME</th>
+        <th class="text-left py-3 px-4 text-gray-600">END TIME</th>
+        <th class="text-left py-3 px-4 text-gray-600">STATUS</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+      <tr class="border-b hover:bg-gray-50">
+        <td class="py-3 px-4">
+          <input
+            type="checkbox"
+            name="selected_tasks"
+            value="{{ task.id }}"
+            class="form-checkbox task-checkbox"
+            onchange="updateButtonVisibility()"
+          />
+        </td>
+        <td class="py-3 px-4">{{ task.date }}</td>
+        <td class="py-3 px-4">{{ task.start_time.strftime('%H:%M:%S') }}</td>
+        <td class="py-3 px-4">{{ task.end_time.strftime('%H:%M:%S') }}</td>
+        <td class="py-3 px-4">{{ task.status.value }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="action-buttons" class="mt-4 flex space-x-4" style="display: none">
+  <button
+    id="process-selected"
+    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+    hx-post="/process"
+    hx-include="[name='selected_tasks']"
+    hx-target="#tasks-container"
+    hx-swap="innerHTML"
+  >
+    Process Selected
+  </button>
+  <button
+    id="delete-selected"
+    class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+    hx-post="/delete"
+    hx-include="[name='selected_tasks']"
+    hx-target="#tasks-container"
+    hx-swap="innerHTML"
+    hx-confirm="Are you sure you want to delete the selected tasks?"
+  >
+    Delete Selected
+  </button>
+</div>
+
+<script>
+  function toggleAll(source) {
+    const checkboxes = document.getElementsByClassName("task-checkbox");
+    for (let checkbox of checkboxes) {
+      checkbox.checked = source.checked;
+    }
+    updateButtonVisibility();
+  }
+
+  function updateButtonVisibility() {
+    const checkboxes = document.getElementsByClassName("task-checkbox");
+    const actionButtons = document.getElementById("action-buttons");
+    const hasChecked = Array.from(checkboxes).some(
+      (checkbox) => checkbox.checked
+    );
+    actionButtons.style.display = hasChecked ? "flex" : "none";
+
+    // Also update the "check all" checkbox
+    const checkAll = document.getElementById("check-all");
+    const allChecked = Array.from(checkboxes).every(
+      (checkbox) => checkbox.checked
+    );
+    checkAll.checked = checkboxes.length > 0 && allChecked;
+  }
+
+  // Initialize button visibility on page load
+  document.addEventListener("DOMContentLoaded", updateButtonVisibility);
+</script>
+
+{% else %}
+<div class="text-center py-8 text-gray-600">
+  No deal tasks found. Add a new task using the form on the left.
+</div>
+{% endif %}
