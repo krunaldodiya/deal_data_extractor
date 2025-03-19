@@ -1,32 +1,143 @@
 import asyncio
 import MT5Manager
-
 from typing import List, Dict
 from libs.manager import get_mt5_manager
 from database import Database
 
 db = Database()
 
+# Define the most important columns for display
+DISPLAY_COLUMNS = [
+    "deal_id",
+    "time",
+    "symbol",
+    "login",
+    "action",
+    "entry",
+    "price",
+    "volume",
+    "profit",
+    "comment",
+]
+
+
+def chunk_list(lst, chunk_size):
+    """Split a list into chunks of specified size"""
+    return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
 
 async def process_single_deal(deal: Dict, account_numbers: List[str], manager):
     try:
         # Use the deal's start and end datetime with pre-fetched account numbers
-        deals = manager.DealRequestByLogins(
+        mt_deals = manager.DealRequestByLogins(
             account_numbers, deal["start_datetime"], deal["end_datetime"]
         )
 
-        if not deals:
+        if not mt_deals:
             print(MT5Manager.LastError())
-            exit()
+            return False, deal["id"]
 
-        print("deals", deals)
-        print(f"Processing Deal {deal['id']}:")
-        print(f"  Start: {deal['start_datetime']}")
-        print(f"  End: {deal['end_datetime']}")
-        print(f"  Status: {deal['status']}")
-        print("---")
+        total_deals = len(mt_deals)
+        print(f"\nTotal deals found: {total_deals}")
 
-        return True, deal["id"]  # Return both success status and deal ID
+        if total_deals > 0:
+            # Process in chunks of 1000 deals
+            CHUNK_SIZE = 1000
+            chunks = chunk_list(mt_deals, CHUNK_SIZE)
+
+            print(f"\nProcessing Deal {deal['id']}:")
+            print(f"Start: {deal['start_datetime']}")
+            print(f"End: {deal['end_datetime']}")
+            print(f"Status: {deal['status']}")
+            print(f"Processing {len(chunks)} chunks of data...")
+
+            # Process and insert each chunk
+            for chunk_idx, chunk in enumerate(chunks, 1):
+                deals_data = []
+                chunk_volume = 0
+                chunk_profit = 0
+                symbols = set()
+                logins = set()
+
+                for mt_deal in chunk:
+                    # Collect summary data
+                    chunk_volume += mt_deal.Volume
+                    chunk_profit += mt_deal.Profit
+                    symbols.add(mt_deal.Symbol)
+                    logins.add(mt_deal.Login)
+
+                    # Prepare data for database insertion
+                    deals_data.append(
+                        (
+                            mt_deal.Deal,
+                            mt_deal.Action,
+                            mt_deal.Comment,
+                            mt_deal.Commission,
+                            mt_deal.ContractSize,
+                            mt_deal.Dealer,
+                            mt_deal.Digits,
+                            mt_deal.DigitsCurrency,
+                            mt_deal.Entry,
+                            mt_deal.ExpertID,
+                            mt_deal.ExternalID,
+                            mt_deal.Fee,
+                            mt_deal.Flags,
+                            mt_deal.Gateway,
+                            mt_deal.Login,
+                            mt_deal.MarketAsk,
+                            mt_deal.MarketBid,
+                            mt_deal.MarketLast,
+                            mt_deal.ModificationFlags,
+                            mt_deal.ObsoleteValue,
+                            mt_deal.Order,
+                            mt_deal.PositionID,
+                            mt_deal.Price,
+                            mt_deal.PriceGateway,
+                            mt_deal.PricePosition,
+                            mt_deal.PriceSL,
+                            mt_deal.PriceTP,
+                            mt_deal.Profit,
+                            mt_deal.ProfitRaw,
+                            mt_deal.RateMargin,
+                            mt_deal.RateProfit,
+                            mt_deal.Reason,
+                            mt_deal.Storage,
+                            mt_deal.Symbol,
+                            mt_deal.TickSize,
+                            mt_deal.TickValue,
+                            mt_deal.Time,
+                            mt_deal.TimeMsc,
+                            mt_deal.Value,
+                            mt_deal.Volume,
+                            mt_deal.VolumeClosed,
+                            mt_deal.VolumeClosedExt,
+                            mt_deal.VolumeExt,
+                            deal["id"],  # deal_date_id
+                        )
+                    )
+
+                print(f"\nInserting chunk {chunk_idx}/{len(chunks)} into database:")
+                print(f"Records in chunk: {len(chunk)}")
+
+                try:
+                    success = db.insert_mt5_deals(deals_data, deal["id"])
+                    if success:
+                        print(f"Successfully inserted chunk {chunk_idx}")
+                        # Print brief summary of inserted data
+                        print("\nChunk Summary:")
+                        print(f"Total Volume: {chunk_volume:,.2f}")
+                        print(f"Total Profit: {chunk_profit:,.2f}")
+                        print(f"Unique Symbols: {len(symbols)}")
+                        print(f"Unique Logins: {len(logins)}")
+                        print("-" * 80)
+                    else:
+                        print(f"Failed to insert chunk {chunk_idx}")
+                        return False, deal["id"]
+                except Exception as e:
+                    print(f"Error inserting chunk {chunk_idx}: {str(e)}")
+                    return False, deal["id"]
+
+        return True, deal["id"]
     except Exception as e:
         print(f"Error processing deal {deal['id']}: {str(e)}")
         return False, deal["id"]
@@ -75,9 +186,11 @@ async def process_deals(deals: List[Dict]):
 
     except Exception as e:
         print(f"Error in process_deals: {str(e)}")
+
         # Update all deals to failed status in case of unexpected error
         for deal in deals:
             db.update_deal_status(deal["id"], "failed")
+
         return False
     finally:
         if manager:

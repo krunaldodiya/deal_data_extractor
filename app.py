@@ -293,8 +293,14 @@ if deal_dates:
                                     deals_to_process.append(
                                         {
                                             "id": int(deal_id),
-                                            "start_datetime": f"{deal_row['Date']} {deal_row['Start Time']}",
-                                            "end_datetime": f"{deal_row['Date']} {deal_row['End Time']}",
+                                            "start_datetime": datetime.datetime.strptime(
+                                                f"{deal_row['Date']} {deal_row['Start Time']}",
+                                                "%Y-%m-%d %H:%M:%S",
+                                            ),
+                                            "end_datetime": datetime.datetime.strptime(
+                                                f"{deal_row['Date']} {deal_row['End Time']}",
+                                                "%Y-%m-%d %H:%M:%S",
+                                            ),
                                             "status": deal_row["Status"],
                                         }
                                     )
