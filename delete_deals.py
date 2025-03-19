@@ -1,9 +1,9 @@
-from typing import List
 import streamlit as st
-from database import Database
+
+from typing import List, Tuple
 
 
-def delete_deals_sync(deal_ids: List[int]) -> bool:
+def delete_deals_sync(deal_ids: List[int]) -> Tuple[bool, List[int], List[int]]:
     """
     Delete multiple deals synchronously.
 
@@ -11,20 +11,22 @@ def delete_deals_sync(deal_ids: List[int]) -> bool:
         deal_ids: List of deal IDs to delete
 
     Returns:
-        bool: True if all deals were deleted successfully, False otherwise
+        Tuple containing:
+        - bool: True if all deals were deleted successfully
+        - List[int]: Successfully deleted deal IDs
+        - List[int]: Failed deal IDs
     """
     try:
         db = st.session_state.db
-        success = True
+        success_ids = []
+        failed_ids = []
 
         for deal_id in deal_ids:
-            if not db.delete_deal(deal_id):
-                st.error(f"Failed to delete Deal {deal_id}")
-                success = False
+            if db.delete_deal(deal_id):
+                success_ids.append(deal_id)
             else:
-                st.success(f"Deal {deal_id} deleted successfully!")
+                failed_ids.append(deal_id)
 
-        return success
+        return len(failed_ids) == 0, success_ids, failed_ids
     except Exception as e:
-        st.error(f"An error occurred while deleting deals: {str(e)}")
-        return False
+        return False, [], deal_ids

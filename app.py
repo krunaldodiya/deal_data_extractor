@@ -382,11 +382,23 @@ if deal_tasks:
                 # Handle deletion
                 if st.session_state.deleting_state:
                     try:
-                        success = delete_deals_sync(selected_ids)
-                        if not success:
-                            st.warning(
-                                "Some deals failed to delete. Check the error messages above."
-                            )
+                        success, success_ids, failed_ids = delete_deals_sync(
+                            selected_ids
+                        )
+
+                        # Show a single success message if all deletions succeeded
+                        if success:
+                            st.success("All selected deals were deleted successfully!")
+                        else:
+                            # Show summary messages for partial success/failure
+                            if success_ids:
+                                st.success(
+                                    f"Successfully deleted {len(success_ids)} deals"
+                                )
+                            if failed_ids:
+                                st.error(
+                                    f"Failed to delete {len(failed_ids)} deals: {', '.join(map(str, failed_ids))}"
+                                )
                     except Exception as e:
                         st.error(f"An error occurred: {str(e)}")
                     finally:
