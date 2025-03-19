@@ -1,6 +1,7 @@
 import sqlite3
-from datetime import date, time
 import threading
+
+from datetime import date, time
 
 
 class Database:
