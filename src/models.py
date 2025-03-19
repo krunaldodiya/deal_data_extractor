@@ -32,21 +32,6 @@ class DealTaskBase(SQLModel):
     )
 
 
-class DealTaskDeal(SQLModel, table=True):
-    __tablename__ = "deal_task_deals"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
-    deal_id: int = Field(foreign_key="deals.deal_id", ondelete="CASCADE")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    __table_args__ = (
-        UniqueConstraint("deal_task_id", "deal_id", name="uq_deal_task_deal"),
-    )
-
-
 class DealTask(DealTaskBase, table=True):
     __tablename__ = "deal_tasks"
     __table_args__ = (
@@ -55,9 +40,7 @@ class DealTask(DealTaskBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    deals: List["MT5Deal"] = Relationship(
-        back_populates="deal_tasks", link_model=DealTaskDeal
-    )
+    deals: List["MT5Deal"] = Relationship(back_populates="deal_task")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -115,6 +98,7 @@ class MT5DealBase(SQLModel):
     volume_closed: float
     volume_closed_ext: float
     volume_ext: float
+    deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -165,9 +149,8 @@ class MT5Deal(SQLModel, table=True):
     volume_closed: float
     volume_closed_ext: float
     volume_ext: float
-    deal_tasks: List["DealTask"] = Relationship(
-        back_populates="deals", link_model=DealTaskDeal
-    )
+    deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
+    deal_task: DealTask = Relationship(back_populates="deals")
 
 
 class MT5DealCreate(MT5DealBase):

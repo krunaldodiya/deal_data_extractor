@@ -125,6 +125,7 @@ async def process_single_deal(
                         volume_closed=mt_deal.VolumeClosed,
                         volume_closed_ext=mt_deal.VolumeClosedExt,
                         volume_ext=mt_deal.VolumeExt,
+                        deal_task_id=deal.id,
                     )
                     mt5_deals_to_insert.append(new_deal)
 
