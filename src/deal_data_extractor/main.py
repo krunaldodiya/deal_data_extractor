@@ -80,8 +80,13 @@ async def create_task_endpoint(
 ):
     """Create a new deal task and return updated tasks list."""
     try:
+        print(
+            f"Creating task with date={date}, start_time={start_time}, end_time={end_time}"
+        )
+
         # Create the task using the service
-        await create_task(date, start_time, end_time, session)
+        new_task = await create_task(date, start_time, end_time, session)
+        print(f"Task created successfully with id={new_task.id}")
 
         # Get updated list of tasks
         statement = select(DealTask).order_by(
@@ -89,6 +94,7 @@ async def create_task_endpoint(
         )
         result = await session.execute(statement)
         tasks = result.scalars().all()
+        print(f"Retrieved {len(tasks)} tasks for response")
 
         # Return the updated tasks container
         return templates.TemplateResponse(
@@ -101,6 +107,7 @@ async def create_task_endpoint(
             },
         )
     except ValueError as e:
+        print(f"ValueError in create_task: {str(e)}")
         # Return the error message with the current tasks
         statement = select(DealTask).order_by(
             DealTask.date.desc(), DealTask.start_time.desc()
@@ -118,7 +125,27 @@ async def create_task_endpoint(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+
+        print(f"Exception in create_task: {str(e)}")
+        print(traceback.format_exc())
+
+        # Return the error response with current tasks
+        statement = select(DealTask).order_by(
+            DealTask.date.desc(), DealTask.start_time.desc()
+        )
+        result = await session.execute(statement)
+        tasks = result.scalars().all()
+
+        return templates.TemplateResponse(
+            "tasks_table.html",
+            {
+                "request": request,
+                "tasks": tasks,
+                "DealStatus": DealStatus,
+                "message": f"Error: {str(e)}",
+            },
+        )
 
 
 @app.post("/process")

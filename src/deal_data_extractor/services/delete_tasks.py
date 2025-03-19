@@ -4,22 +4,13 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 import traceback
 
-from deal_data_extractor.models import DealTask, MT5Deal
+from deal_data_extractor.models import DealTask
 
 
-async def delete_task_with_deals(task_id: int, session: AsyncSession) -> bool:
-    """Delete a task and all its associated MT5 deals"""
+async def delete_task(task_id: int, session: AsyncSession) -> bool:
+    """Delete a task (no longer deletes associated deals)"""
     try:
-        # First, select all the deals associated with this task
-        statement = select(MT5Deal).where(MT5Deal.deal_task_id == task_id)
-        result = await session.execute(statement)
-        deals = result.scalars().all()
-
-        # Delete the deals
-        for deal in deals:
-            await session.delete(deal)
-
-        # Then, get and delete the task
+        # Get and delete the task
         statement = select(DealTask).where(DealTask.id == task_id)
         result = await session.execute(statement)
         task = result.scalar_one_or_none()
@@ -41,13 +32,13 @@ async def delete_task_with_deals(task_id: int, session: AsyncSession) -> bool:
 async def delete_tasks(
     task_ids: List[int], session: AsyncSession
 ) -> Tuple[bool, List[int], List[int]]:
-    """Delete multiple tasks and their associated deals."""
+    """Delete multiple tasks (no longer deletes associated deals)."""
     successful_deletes = []
     failed_deletes = []
 
     try:
         # Create tasks for all task deletions
-        tasks = [delete_task_with_deals(task_id, session) for task_id in task_ids]
+        tasks = [delete_task(task_id, session) for task_id in task_ids]
 
         # Run all tasks concurrently
         results = await asyncio.gather(*tasks, return_exceptions=True)

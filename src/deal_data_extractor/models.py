@@ -40,7 +40,6 @@ class DealTask(DealTaskBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    mt5_deals: List["MT5Deal"] = Relationship(back_populates="deal_task")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -149,8 +148,6 @@ class MT5Deal(SQLModel, table=True):
     volume_closed: float
     volume_closed_ext: float
     volume_ext: float
-    deal_task_id: int = Field(foreign_key="deal_tasks.id")
-    deal_task: Optional[DealTask] = Relationship(back_populates="mt5_deals")
 
 
 class MT5DealCreate(MT5DealBase):
