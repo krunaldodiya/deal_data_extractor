@@ -199,23 +199,23 @@ with st.sidebar:
             # Add submit button
             if st.button("Submit"):
                 # Insert data into database
-                if db.insert_deal_date(selected_date, start_time, end_time):
-                    st.success("Data saved successfully!")
+                if db.insert_deal_task(selected_date, start_time, end_time):
+                    st.success("Task saved successfully!")
                 else:
-                    st.error("Error saving data to database")
+                    st.error("Error saving task to database")
         else:
             st.error("Error: End time must be after start time")
 
 # Main content area - Display deals table
-st.header("Deal Dates")
+st.header("Deal Tasks")
 
-# Get all deal dates
-deal_dates = db.get_all_deal_dates()
+# Get all deal tasks
+deal_tasks = db.get_all_deal_tasks()
 
-if deal_dates:
+if deal_tasks:
     # Create DataFrame
     df = pd.DataFrame(
-        deal_dates, columns=["ID", "Date", "Start Time", "End Time", "Status"]
+        deal_tasks, columns=["ID", "Date", "Start Time", "End Time", "Status"]
     )
 
     # Display table header
@@ -347,4 +347,4 @@ if deal_dates:
                         st.rerun()
 
 else:
-    st.info("No deal dates have been added yet.")
+    st.info("No deal tasks have been added yet.")

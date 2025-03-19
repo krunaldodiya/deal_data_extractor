@@ -41,7 +41,7 @@ class Database:
             try:
                 self.cursor.execute(
                     """
-                CREATE TABLE IF NOT EXISTS deal_dates (
+                CREATE TABLE IF NOT EXISTS deal_tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT NOT NULL,
                     start_time TEXT NOT NULL,
@@ -100,7 +100,7 @@ class Database:
                     volume_closed_ext REAL,
                     volume_ext REAL,
                     deal_date_id INTEGER,
-                    FOREIGN KEY (deal_date_id) REFERENCES deal_dates (id)
+                    FOREIGN KEY (deal_date_id) REFERENCES deal_tasks (id)
                 )
                 """
                 )
@@ -114,15 +114,15 @@ class Database:
                 print(f"Error creating tables: {str(e)}")
                 raise
 
-    def insert_deal_date(
+    def insert_deal_task(
         self, deal_date: date, start_time: time, end_time: time
     ) -> bool:
-        """Insert a new deal date record"""
+        """Insert a new deal task record"""
         self.ensure_connection()
         with self.lock:
             try:
                 self.cursor.execute(
-                    "INSERT INTO deal_dates (date, start_time, end_time) VALUES (?, ?, ?)",
+                    "INSERT INTO deal_tasks (date, start_time, end_time) VALUES (?, ?, ?)",
                     (
                         deal_date.isoformat(),
                         start_time.isoformat(),
@@ -132,29 +132,29 @@ class Database:
                 self.conn.commit()
                 return True
             except Exception as e:
-                print(f"Error inserting deal date: {str(e)}")
+                print(f"Error inserting deal task: {str(e)}")
                 return False
 
-    def get_all_deal_dates(self):
-        """Fetch all deal date records"""
+    def get_all_deal_tasks(self):
+        """Fetch all deal task records"""
         self.ensure_connection()
         with self.lock:
             try:
                 self.cursor.execute(
-                    "SELECT id, date, start_time, end_time, status FROM deal_dates ORDER BY date DESC"
+                    "SELECT id, date, start_time, end_time, status FROM deal_tasks ORDER BY date DESC"
                 )
                 return self.cursor.fetchall()
             except Exception as e:
-                print(f"Error fetching deal dates: {str(e)}")
+                print(f"Error fetching deal tasks: {str(e)}")
                 return None
 
     def update_deal_status(self, deal_id: int, status: str) -> bool:
-        """Update the status of a deal date record"""
+        """Update the status of a deal task record"""
         self.ensure_connection()
         with self.lock:
             try:
                 self.cursor.execute(
-                    "UPDATE deal_dates SET status = ? WHERE id = ?", (status, deal_id)
+                    "UPDATE deal_tasks SET status = ? WHERE id = ?", (status, deal_id)
                 )
                 self.conn.commit()
                 return True
@@ -163,14 +163,14 @@ class Database:
                 return False
 
     def delete_deal(self, deal_id: int) -> bool:
-        """Delete a deal date record from the database"""
+        """Delete a deal task record from the database"""
         self.ensure_connection()
         with self.lock:
             try:
                 self.cursor.execute(
                     "DELETE FROM mt5_deals WHERE deal_date_id = ?", (deal_id,)
                 )
-                self.cursor.execute("DELETE FROM deal_dates WHERE id = ?", (deal_id,))
+                self.cursor.execute("DELETE FROM deal_tasks WHERE id = ?", (deal_id,))
                 self.conn.commit()
                 return True
             except Exception as e:
