@@ -9,11 +9,13 @@ import datetime
 import pandas as pd
 from database import Database
 from process_deals import process_deals_sync
+from delete_deals import delete_deals_sync
 
 # Custom CSS for buttons and layout
 st.markdown(
     """
 <style>
+    /* Basic button styling */
     .stButton > button {
         padding: 0.1rem 0.3rem;
         font-size: 0.5rem;
@@ -29,7 +31,8 @@ st.markdown(
         border: 1px solid #999;
         color: #999;
     }
-    /* Adjust column padding and margins */
+
+    /* Column and layout adjustments */
     [data-testid="column"] {
         padding: 0 !important;
         margin: 0 !important;
@@ -38,11 +41,11 @@ st.markdown(
         padding: 0 !important;
         margin: 0 !important;
     }
-    /* Add padding specifically for button columns */
     div[data-testid="column"]:has(button) {
         padding-right: 10px !important;
     }
-    /* Remove extra padding from checkbox */
+
+    /* Checkbox styling */
     .stCheckbox {
         padding: 0 !important;
         margin: 0 !important;
@@ -51,21 +54,21 @@ st.markdown(
         padding: 0 !important;
         margin: 0 !important;
     }
-    /* Adjust text margins */
+
+    /* Text and layout adjustments */
     .element-container {
         margin: 0 !important;
         padding: 0 !important;
     }
-    /* Adjust separator line margins */
     hr {
         margin: 0.2rem 0 !important;
     }
-    /* Make text more compact */
     .row-widget > div {
         line-height: 1 !important;
         padding: 0 !important;
     }
-    /* Style table headers */
+
+    /* Table header styling */
     .header-style {
         font-weight: bold;
         white-space: nowrap;
@@ -73,62 +76,43 @@ st.markdown(
         text-overflow: unset;
         padding-right: 1rem !important;
     }
-    /* Action buttons styling - default dark style for Process button */
+
+    /* Button styling */
     .stButton > button {
         padding: 0.2rem 0.8rem !important;
         font-size: 0.4rem !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        height: auto !important;
-        width: auto !important;
+        height: 24px !important;
+        width: 120px !important;
         margin: 0 !important;
         border-radius: 4px !important;
         font-weight: 500 !important;
-        background-color: #2b2b2b !important;  /* Dark background */
+        background-color: #2b2b2b !important;
         border: 1px solid #555 !important;
         color: #fff !important;
         transition: all 0.3s ease !important;
         white-space: nowrap !important;
-        min-width: 50px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     .stButton > button:hover {
-        background-color: #3d3d3d !important;  /* Slightly lighter on hover */
+        background-color: #3d3d3d !important;
         border-color: #fff !important;
     }
-    /* Style specifically for delete button */
+
+    /* Delete button specific styling */
     .stButton > [kind="secondary"] {
         background-color: #ff4444 !important;
         border-color: #ff4444 !important;
+        width: 120px !important;
     }
     .stButton > [kind="secondary"]:hover {
         background-color: #cc0000 !important;
         border-color: #cc0000 !important;
     }
-    /* Button container styling */
-    .button-container {
-        display: flex !important;
-        gap: 4px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    /* Custom button positioning */
-    .process-button {
-        position: absolute;
-        left: 1rem;
-    }
-    .delete-button {
-        position: absolute;
-        right: 1rem;
-    }
-    .button-spacer {
-        height: 3rem;
-        position: relative;
-    }
-    /* Add margin after the header */
-    h1, h2, h3 {
-        margin-bottom: 1.5rem !important;
-    }
-    /* Adjust column margins for buttons */
+
+    /* Button layout and spacing */
     [data-testid="column"] {
         padding: 0 !important;
         margin: 0 !important;
@@ -139,28 +123,42 @@ st.markdown(
         margin: 0 !important;
         display: inline-block !important;
     }
-    /* Button container styling */
     div[data-testid="column"] > div > div > div > div > button {
         margin-right: 5px !important;
+        width: 120px !important;
     }
-    /* Action buttons container */
-    .button-group {
-        display: flex !important;
-        align-items: center !important;
-        gap: 5px !important;
+
+    /* Header margins */
+    h1, h2, h3 {
+        margin-bottom: 1.5rem !important;
     }
-    .button-group > div {
-        display: inline-block !important;
+
+    /* Button positioning */
+    .stButton {
+        position: static !important;
+        float: none !important;
+        display: block !important;
     }
-    .button-group .stButton {
-        margin: 0 !important;
-        display: inline-block !important;
+
+    /* Column spacing */
+    div[data-testid="column"]:first-child {
+        padding-right: 15px !important;
     }
-    .button-group > div > div {
-        display: inline-block !important;
+    div[data-testid="column"]:last-child {
+        padding-left: 15px !important;
     }
-    .button-group .element-container {
-        display: inline-block !important;
+
+    /* Disabled button states */
+    .stButton > button:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+    .stButton > button[kind="secondary"]:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+        background-color: #ff4444 !important;
     }
 </style>
 """,
@@ -174,9 +172,13 @@ if "db" not in st.session_state:
 # Use session state db throughout the app
 db = st.session_state.db
 
-# Initialize processing state in session state if not exists
+# Initialize all session state variables at the start of the app
 if "is_processing" not in st.session_state:
     st.session_state.is_processing = False
+if "processing_state" not in st.session_state:
+    st.session_state.processing_state = False
+if "deleting_state" not in st.session_state:
+    st.session_state.deleting_state = False
 
 # Add date and time selection to sidebar
 with st.sidebar:
@@ -292,100 +294,103 @@ if deal_tasks:
     if selected_ids:
         col1, _ = st.columns([3, 9])
         with col1:
-            c1, gap, c2 = st.columns([0.95, 0.1, 0.95])
-            with c1:
-                # Process button with loading state
-                process_button = st.button(
-                    "Process",
-                    key="process_selected",
-                    disabled=st.session_state.is_processing,
-                    type="primary",
-                )
+            # Create three columns with even wider gap in middle
+            c1, gap, c2 = st.columns([1, 1.5, 1])
 
-                # Check if we should start processing
-                if process_button and not st.session_state.is_processing:
-                    st.session_state.is_processing = True
-                    st.session_state.process_clicked = True
+            # Initialize button states if not exists
+            if "processing_state" not in st.session_state:
+                st.session_state.processing_state = False
+            if "deleting_state" not in st.session_state:
+                st.session_state.deleting_state = False
+
+            # Calculate disabled state
+            is_disabled = (
+                st.session_state.processing_state or st.session_state.deleting_state
+            )
+
+            with c1:
+                # Process button
+                if st.button(
+                    "Processing..." if st.session_state.processing_state else "Process",
+                    key="process_selected",
+                    disabled=is_disabled,
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    st.session_state.processing_state = True
                     st.rerun()
 
-                # Check if we should execute the processing
-                if (
-                    st.session_state.get("process_clicked", False)
-                    and st.session_state.is_processing
-                ):
+                # Handle processing
+                if st.session_state.processing_state:
                     try:
-                        with st.spinner("Processing deals..."):
-                            # Prepare list of dictionaries for selected deals
-                            deals_to_process = []
-                            for deal_id in selected_ids:
-                                # Get the filtered DataFrame and check if it's not empty
-                                filtered_df = df[df["ID"] == deal_id]
-                                if not filtered_df.empty:
-                                    deal_row = filtered_df.iloc[0]
-                                    deals_to_process.append(
-                                        {
-                                            "id": int(deal_id),
-                                            "start_datetime": datetime.datetime.strptime(
-                                                f"{deal_row['Date']} {deal_row['Start Time']}",
-                                                "%Y-%m-%d %H:%M:%S",
-                                            ),
-                                            "end_datetime": datetime.datetime.strptime(
-                                                f"{deal_row['Date']} {deal_row['End Time']}",
-                                                "%Y-%m-%d %H:%M:%S",
-                                            ),
-                                            "status": deal_row["Status"],
-                                        }
-                                    )
-                                else:
-                                    st.error(f"Deal {deal_id} not found in the table")
-                                    continue
-
-                            # Call the process_deals function only if we have deals to process
-                            if deals_to_process:
-                                success = process_deals_sync(deals_to_process)
-                                if success:
-                                    st.success("All deals processed successfully!")
-                                else:
-                                    st.warning(
-                                        "Some deals failed to process. Check the logs for details."
-                                    )
+                        # Prepare list of dictionaries for selected deals
+                        deals_to_process = []
+                        for deal_id in selected_ids:
+                            filtered_df = df[df["ID"] == deal_id]
+                            if not filtered_df.empty:
+                                deal_row = filtered_df.iloc[0]
+                                deals_to_process.append(
+                                    {
+                                        "id": int(deal_id),
+                                        "start_datetime": datetime.datetime.strptime(
+                                            f"{deal_row['Date']} {deal_row['Start Time']}",
+                                            "%Y-%m-%d %H:%M:%S",
+                                        ),
+                                        "end_datetime": datetime.datetime.strptime(
+                                            f"{deal_row['Date']} {deal_row['End Time']}",
+                                            "%Y-%m-%d %H:%M:%S",
+                                        ),
+                                        "status": deal_row["Status"],
+                                    }
+                                )
                             else:
-                                st.warning("No valid deals selected for processing")
+                                st.error(f"Deal {deal_id} not found in the table")
+                                continue
+
+                        if deals_to_process:
+                            success = process_deals_sync(deals_to_process)
+                            if success:
+                                st.success("All deals processed successfully!")
+                            else:
+                                st.warning(
+                                    "Some deals failed to process. Check the logs for details."
+                                )
+                        else:
+                            st.warning("No valid deals selected for processing")
                     except Exception as e:
                         st.error(f"An error occurred: {str(e)}")
                     finally:
-                        st.session_state.is_processing = False
-                        st.session_state.process_clicked = False
+                        st.session_state.processing_state = False
                         st.rerun()
 
-            with c2:
-                # Delete button with loading state
-                delete_button = st.button(
-                    "Delete",
-                    key="delete_selected",
-                    type="secondary",
-                    disabled=st.session_state.is_processing,
-                )
+            # Add visual gap
+            with gap:
+                st.write("")
 
-                # Check if we should start deleting
-                if delete_button and not st.session_state.is_processing:
-                    st.session_state.is_processing = True
-                    st.session_state.delete_clicked = True
+            with c2:
+                # Delete button
+                if st.button(
+                    "Deleting..." if st.session_state.deleting_state else "Delete",
+                    key="delete_selected",
+                    disabled=is_disabled,
+                    type="secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.deleting_state = True
                     st.rerun()
 
-                # Check if we should execute the deletion
-                if (
-                    st.session_state.get("delete_clicked", False)
-                    and st.session_state.is_processing
-                ):
-                    with st.spinner("Deleting deals..."):
-                        for deal_id in selected_ids:
-                            if db.delete_deal(deal_id):
-                                st.success(f"Deal {deal_id} deleted successfully!")
-                            else:
-                                st.error(f"Failed to delete Deal {deal_id}")
-                        st.session_state.is_processing = False
-                        st.session_state.delete_clicked = False
+                # Handle deletion
+                if st.session_state.deleting_state:
+                    try:
+                        success = delete_deals_sync(selected_ids)
+                        if not success:
+                            st.warning(
+                                "Some deals failed to delete. Check the error messages above."
+                            )
+                    except Exception as e:
+                        st.error(f"An error occurred: {str(e)}")
+                    finally:
+                        st.session_state.deleting_state = False
                         st.rerun()
 
 else:
