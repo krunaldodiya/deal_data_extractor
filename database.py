@@ -233,3 +233,25 @@ class Database:
             except Exception as e:
                 print(f"Error getting MT5 deals summary: {str(e)}")
                 return None
+
+    def get_deal_status(self, deal_id: int) -> str:
+        """
+        Get the status of a specific deal.
+
+        Args:
+            deal_id: The ID of the deal to check
+
+        Returns:
+            str: The status of the deal ('success', 'failed', 'processing', etc.)
+        """
+        self.ensure_connection()
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    "SELECT status FROM deal_tasks WHERE id = ?", (deal_id,)
+                )
+                result = self.cursor.fetchone()
+                return result[0] if result else None
+            except Exception as e:
+                print(f"Error getting deal status: {str(e)}")
+                return None

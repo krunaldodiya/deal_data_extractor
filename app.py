@@ -327,34 +327,45 @@ if deal_tasks:
                         deals_to_process = []
                         for deal_id in selected_ids:
                             filtered_df = df[df["ID"] == deal_id]
-                            if not filtered_df.empty:
-                                deal_row = filtered_df.iloc[0]
-                                deals_to_process.append(
-                                    {
-                                        "id": int(deal_id),
-                                        "start_datetime": datetime.datetime.strptime(
-                                            f"{deal_row['Date']} {deal_row['Start Time']}",
-                                            "%Y-%m-%d %H:%M:%S",
-                                        ),
-                                        "end_datetime": datetime.datetime.strptime(
-                                            f"{deal_row['Date']} {deal_row['End Time']}",
-                                            "%Y-%m-%d %H:%M:%S",
-                                        ),
-                                        "status": deal_row["Status"],
-                                    }
-                                )
-                            else:
-                                st.error(f"Deal {deal_id} not found in the table")
+                            if filtered_df.empty:
                                 continue
 
+                            deal_row = filtered_df.iloc[0]
+                            deals_to_process.append(
+                                {
+                                    "id": int(deal_id),
+                                    "start_datetime": datetime.datetime.strptime(
+                                        f"{deal_row['Date']} {deal_row['Start Time']}",
+                                        "%Y-%m-%d %H:%M:%S",
+                                    ),
+                                    "end_datetime": datetime.datetime.strptime(
+                                        f"{deal_row['Date']} {deal_row['End Time']}",
+                                        "%Y-%m-%d %H:%M:%S",
+                                    ),
+                                    "status": deal_row["Status"],
+                                }
+                            )
+
                         if deals_to_process:
-                            success = process_deals_sync(deals_to_process)
+                            success, success_ids, failed_ids = process_deals_sync(
+                                deals_to_process
+                            )
+
+                            # Show a single success message if all processing succeeded
                             if success:
-                                st.success("All deals processed successfully!")
-                            else:
-                                st.warning(
-                                    "Some deals failed to process. Check the logs for details."
+                                st.success(
+                                    "All selected deals were processed successfully!"
                                 )
+                            else:
+                                # Show summary messages for partial success/failure
+                                if success_ids:
+                                    st.success(
+                                        f"Successfully processed {len(success_ids)} deals"
+                                    )
+                                if failed_ids:
+                                    st.error(
+                                        f"Failed to process {len(failed_ids)} deals: {', '.join(map(str, failed_ids))}"
+                                    )
                         else:
                             st.warning("No valid deals selected for processing")
                     except Exception as e:

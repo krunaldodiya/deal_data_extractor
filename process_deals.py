@@ -1,8 +1,9 @@
 import asyncio
 import MT5Manager
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from libs.manager import get_mt5_manager
 from database import Database
+import streamlit as st
 
 db = Database()
 
@@ -197,6 +198,35 @@ async def process_deals(deals: List[Dict]):
             manager.Disconnect()
 
 
-# Helper function to run the async function
-def process_deals_sync(deals: List[Dict]):
-    return asyncio.run(process_deals(deals))
+def process_deals_sync(deals: List[Dict]) -> Tuple[bool, List[int], List[int]]:
+    """
+    Process multiple deals synchronously.
+
+    Args:
+        deals: List of deal dictionaries containing id, start_datetime, end_datetime, and status
+
+    Returns:
+        Tuple containing:
+        - bool: True if all deals were processed successfully
+        - List[int]: Successfully processed deal IDs
+        - List[int]: Failed deal IDs
+    """
+    try:
+        # Run the async function using asyncio
+        success = asyncio.run(process_deals(deals))
+
+        # Get the final status of all deals from the database
+        success_ids = []
+        failed_ids = []
+
+        for deal in deals:
+            status = db.get_deal_status(deal["id"])
+            if status == "success":
+                success_ids.append(deal["id"])
+            else:
+                failed_ids.append(deal["id"])
+
+        return len(failed_ids) == 0, success_ids, failed_ids
+    except Exception as e:
+        print(f"Error in process_deals_sync: {str(e)}")
+        return False, [], [d["id"] for d in deals]
