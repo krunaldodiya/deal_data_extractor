@@ -48,6 +48,7 @@ ENV/
 MT5Manager.pyd
 MT5Manager.dll
 
+exports/
 bases/
 logs/
 deals.db
