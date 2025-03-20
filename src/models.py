@@ -2,7 +2,17 @@ from datetime import datetime, date, time
 from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 from enum import Enum
-from sqlalchemy import UniqueConstraint, Column, Enum as SQLEnum, BigInteger
+from sqlalchemy import (
+    UniqueConstraint,
+    Column,
+    Enum as SQLEnum,
+    BigInteger,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    CheckConstraint,
+)
 from pydantic import ConfigDict
 
 
@@ -55,49 +65,69 @@ class DealTaskRead(DealTaskBase):
 
 
 class MT5DealBase(SQLModel):
-    deal_id: int = Field(unique=True)
-    action: int
-    comment: str
-    commission: float
-    contract_size: float
-    dealer: int
-    digits: int
-    digits_currency: int
-    entry: int
-    expert_id: int
-    external_id: str
-    fee: float
-    flags: int
-    gateway: str
-    login: int
-    market_ask: float
-    market_bid: float
-    market_last: float
-    modification_flags: int
-    obsolete_value: float
-    order_id: Optional[int] = None
-    position_id: int
-    price: float
-    price_gateway: float
-    price_position: float
-    price_sl: float
-    price_tp: float
-    profit: float
-    profit_raw: float
-    rate_margin: float
-    rate_profit: float
-    reason: int
-    storage: float
-    symbol: str
-    tick_size: float
-    tick_value: float
-    time: datetime
-    time_msc: int = Field(sa_column=Column(BigInteger()))
-    value: float
-    volume: float
-    volume_closed: float
-    volume_closed_ext: float
-    volume_ext: float
+    deal_id: int = Field(
+        sa_column=Column(BigInteger, unique=True, comment="Unsigned 64-bit integer")
+    )
+    action: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    comment: str = Field(sa_column=Column(String(32)))
+    commission: float = Field(sa_column=Column(Float))
+    contract_size: float = Field(sa_column=Column(Float))
+    dealer: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    digits: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    digits_currency: int = Field(
+        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
+    )
+    entry: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    expert_id: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    external_id: str = Field(sa_column=Column(String(32)))
+    fee: float = Field(sa_column=Column(Float))
+    flags: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    gateway: str = Field(sa_column=Column(String(16)))
+    login: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    market_ask: float = Field(sa_column=Column(Float))
+    market_bid: float = Field(sa_column=Column(Float))
+    market_last: float = Field(sa_column=Column(Float))
+    modification_flags: int = Field(
+        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
+    )
+    obsolete_value: float = Field(sa_column=Column(Float))
+    order_id: Optional[int] = Field(
+        default=None, sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    position_id: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    price: float = Field(sa_column=Column(Float))
+    price_gateway: float = Field(sa_column=Column(Float))
+    price_position: float = Field(sa_column=Column(Float))
+    price_sl: float = Field(sa_column=Column(Float))
+    price_tp: float = Field(sa_column=Column(Float))
+    profit: float = Field(sa_column=Column(Float))
+    profit_raw: float = Field(sa_column=Column(Float))
+    rate_margin: float = Field(sa_column=Column(Float))
+    rate_profit: float = Field(sa_column=Column(Float))
+    reason: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    storage: float = Field(sa_column=Column(Float))
+    symbol: str = Field(sa_column=Column(String(32)))
+    tick_size: float = Field(sa_column=Column(Float))
+    tick_value: float = Field(sa_column=Column(Float))
+    time: datetime = Field(sa_column=Column(DateTime))
+    time_msc: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    value: float = Field(sa_column=Column(Float))
+    volume: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    volume_closed: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    volume_closed_ext: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    volume_ext: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
     deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -105,50 +135,85 @@ class MT5DealBase(SQLModel):
 
 class MT5Deal(SQLModel, table=True):
     __tablename__ = "deals"
+    __table_args__ = (
+        # Add check constraints for unsigned values
+        CheckConstraint("deal_id >= 0", name="ck_deal_id_unsigned"),
+        CheckConstraint("dealer >= 0", name="ck_dealer_unsigned"),
+        CheckConstraint("login >= 0", name="ck_login_unsigned"),
+        CheckConstraint("expert_id >= 0", name="ck_expert_id_unsigned"),
+        CheckConstraint("flags >= 0", name="ck_flags_unsigned"),
+        CheckConstraint("position_id >= 0", name="ck_position_id_unsigned"),
+        CheckConstraint("volume >= 0", name="ck_volume_unsigned"),
+        CheckConstraint("volume_closed >= 0", name="ck_volume_closed_unsigned"),
+        CheckConstraint("volume_closed_ext >= 0", name="ck_volume_closed_ext_unsigned"),
+        CheckConstraint("volume_ext >= 0", name="ck_volume_ext_unsigned"),
+    )
 
-    deal_id: int = Field(primary_key=True)
-    action: int
-    comment: str
-    commission: float
-    contract_size: float
-    dealer: int
-    digits: int
-    digits_currency: int
-    entry: int
-    expert_id: int
-    external_id: str
-    fee: float
-    flags: int
-    gateway: str
-    login: int
-    market_ask: float
-    market_bid: float
-    market_last: float
-    modification_flags: int
-    obsolete_value: float
-    order_id: Optional[int] = None
-    position_id: int
-    price: float
-    price_gateway: float
-    price_position: float
-    price_sl: float
-    price_tp: float
-    profit: float
-    profit_raw: float
-    rate_margin: float
-    rate_profit: float
-    reason: int
-    storage: float
-    symbol: str
-    tick_size: float
-    tick_value: float
-    time: datetime
-    time_msc: int = Field(sa_column=Column(BigInteger()))
-    value: float
-    volume: float
-    volume_closed: float
-    volume_closed_ext: float
-    volume_ext: float
+    deal_id: int = Field(
+        sa_column=Column(
+            BigInteger, primary_key=True, comment="Unsigned 64-bit integer"
+        )
+    )
+    action: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    comment: str = Field(sa_column=Column(String(32)))
+    commission: float = Field(sa_column=Column(Float))
+    contract_size: float = Field(sa_column=Column(Float))
+    dealer: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    digits: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    digits_currency: int = Field(
+        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
+    )
+    entry: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    expert_id: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    external_id: str = Field(sa_column=Column(String(32)))
+    fee: float = Field(sa_column=Column(Float))
+    flags: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    gateway: str = Field(sa_column=Column(String(16)))
+    login: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    market_ask: float = Field(sa_column=Column(Float))
+    market_bid: float = Field(sa_column=Column(Float))
+    market_last: float = Field(sa_column=Column(Float))
+    modification_flags: int = Field(
+        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
+    )
+    obsolete_value: float = Field(sa_column=Column(Float))
+    order_id: Optional[int] = Field(
+        default=None, sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    position_id: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    price: float = Field(sa_column=Column(Float))
+    price_gateway: float = Field(sa_column=Column(Float))
+    price_position: float = Field(sa_column=Column(Float))
+    price_sl: float = Field(sa_column=Column(Float))
+    price_tp: float = Field(sa_column=Column(Float))
+    profit: float = Field(sa_column=Column(Float))
+    profit_raw: float = Field(sa_column=Column(Float))
+    rate_margin: float = Field(sa_column=Column(Float))
+    rate_profit: float = Field(sa_column=Column(Float))
+    reason: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    storage: float = Field(sa_column=Column(Float))
+    symbol: str = Field(sa_column=Column(String(32)))
+    tick_size: float = Field(sa_column=Column(Float))
+    tick_value: float = Field(sa_column=Column(Float))
+    time: datetime = Field(sa_column=Column(DateTime))
+    time_msc: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    value: float = Field(sa_column=Column(Float))
+    volume: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    volume_closed: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    volume_closed_ext: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
+    volume_ext: int = Field(
+        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
+    )
     deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
     deal_task: DealTask = Relationship(back_populates="deals")
 
