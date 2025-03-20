@@ -42,6 +42,7 @@ async def process_single_deal(
     manager: MT5Manager.ManagerAPI,
     session: AsyncSession,
 ):
+    # Create a new session for each task to avoid concurrency issues
     try:
         # Delete all deals for this task directly
         stmt = delete(MT5Deal).where(MT5Deal.deal_task_id == deal.id)
@@ -176,7 +177,7 @@ async def process_single_deal(
 async def process_deals(
     deal_ids: List[int], session: AsyncSession
 ) -> Tuple[bool, List[int], List[int]]:
-    """Process multiple deals asynchronously with controlled concurrency."""
+    """Process multiple deals sequentially to avoid concurrency issues."""
     manager = None
     successful_deals = []
     failed_deals = []
@@ -199,29 +200,18 @@ async def process_deals(
         total_accounts_group = manager.UserGetByGroup("demo\\Nostro\\*")
         account_numbers = [account.Login for account in total_accounts_group]
 
-        # Process deals in batches to control memory usage and concurrency
-        CONCURRENT_LIMIT = 5  # Increased from 3 to 5
-        for i in range(0, len(deals), CONCURRENT_LIMIT):
-            batch = deals[i : i + CONCURRENT_LIMIT]
+        # Process deals sequentially to avoid concurrency issues
+        for deal in deals:
+            success, deal_id = await process_single_deal(
+                deal, account_numbers, manager, session
+            )
+            if success:
+                successful_deals.append(deal_id)
+            else:
+                failed_deals.append(deal_id)
 
-            # Create tasks for the current batch
-            tasks = [
-                process_single_deal(deal, account_numbers, manager, session)
-                for deal in batch
-            ]
-
-            # Run current batch concurrently
-            batch_results = await asyncio.gather(*tasks)
-
-            # Process results
-            for success, deal_id in batch_results:
-                if success:
-                    successful_deals.append(deal_id)
-                else:
-                    failed_deals.append(deal_id)
-
-            # Brief pause between batches to allow system resources to stabilize
-            await asyncio.sleep(0.2)  # Reduced from 0.5 to 0.2 seconds
+            # Add a short delay between processing tasks
+            await asyncio.sleep(0.1)
 
         # Update statuses in database
         if successful_deals:
