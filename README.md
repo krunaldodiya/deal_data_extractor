@@ -18,4 +18,6 @@ python run.py
 
 The application will be available at http://localhost:1234
 
-python export_data.py --table deals --exclude-columns "deal_task_id" --output deals.csv
+```sh
+python export_data.py --table deals --exclude-columns "deal_task_id" --sort-column time --sort-desc --output deals.csv
+```

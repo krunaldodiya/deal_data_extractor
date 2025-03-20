@@ -94,6 +94,8 @@ def export_data(
     date=None,
     include_headers=True,
     exclude_columns=None,
+    sort_column=None,
+    sort_desc=False,
 ):
     """
     Export data from PostgreSQL to CSV using Polars.
@@ -106,6 +108,8 @@ def export_data(
         date: Optional date to filter data by (format: YYYY-MM-DD)
         include_headers: Whether to include headers in the CSV file
         exclude_columns: List of column names to exclude from the export
+        sort_column: Column to sort by (if None, sorts by the primary key)
+        sort_desc: Whether to sort in descending order (newest first)
     """
     start_time = time.time()
     conn = get_connection()
@@ -116,6 +120,19 @@ def export_data(
 
     if exclude_columns:
         logger.info(f"Excluding columns: {exclude_columns}")
+
+    # Set default sort column based on table if none provided
+    if sort_column is None:
+        if table_name == "deals":
+            sort_column = "time"  # Default sort by time for deals
+        else:
+            # Get primary key or first column for other tables
+            columns = get_table_columns(conn, table_name)
+            sort_column = columns[0]
+
+    # Sorting direction
+    sort_direction = "DESC" if sort_desc else "ASC"
+    logger.info(f"Sorting by {sort_column} {sort_direction}")
 
     # Build WHERE clause based on filters
     where_conditions = []
@@ -165,11 +182,11 @@ def export_data(
             f"Processing batch {batch_num+1}/{num_batches} (rows {offset+1}-{min(offset+batch_size, total_rows)})"
         )
 
-        # SQL to fetch a batch of data with parameterized query
+        # SQL to fetch a batch of data with parameterized query and sorting
         sql = f"""
             SELECT * FROM {table_name}
             {where_clause}
-            ORDER BY {columns[0]}
+            ORDER BY {sort_column} {sort_direction}
             LIMIT {batch_size} OFFSET {offset}
         """
 
@@ -219,7 +236,12 @@ def export_data(
 
 
 def export_task_and_deals(
-    task_id, output_dir="exports", date=None, exclude_columns=None
+    task_id,
+    output_dir="exports",
+    date=None,
+    exclude_columns=None,
+    sort_column=None,
+    sort_desc=False,
 ):
     """Export a task and its associated deals to separate CSV files."""
     # Create output directory if it doesn't exist
@@ -279,6 +301,8 @@ def export_task_and_deals(
         task_id=task_id,
         date=date,
         exclude_columns=exclude_columns,
+        sort_column=sort_column,
+        sort_desc=sort_desc,
     )
 
     logger.info(
@@ -314,6 +338,17 @@ if __name__ == "__main__":
         type=str,
         help="Comma-separated list of column names to exclude",
         default="deal_task_id",
+    )
+    parser.add_argument(
+        "--sort-column",
+        type=str,
+        help="Column to sort by (if None, sorts by the primary key)",
+        default=None,
+    )
+    parser.add_argument(
+        "--sort-desc",
+        action="store_true",
+        help="Sort in descending order (newest first)",
     )
 
     args = parser.parse_args()
@@ -352,6 +387,8 @@ if __name__ == "__main__":
             output_dir=export_dir,
             date=args.date,
             exclude_columns=exclude_columns,
+            sort_column=args.sort_column,
+            sort_desc=args.sort_desc,
         )
     else:
         # Otherwise export the specified table
@@ -362,4 +399,6 @@ if __name__ == "__main__":
             args.task_id,
             args.date,
             exclude_columns=exclude_columns,
+            sort_column=args.sort_column,
+            sort_desc=args.sort_desc,
         )
