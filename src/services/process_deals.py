@@ -67,29 +67,15 @@ async def process_single_deal(
         total_deals = len(mt_deals)
 
         if total_deals > 0:
-            # Process in smaller chunks for better performance - 200 deals per chunk
-            CHUNK_SIZE = 200
+            # Process in larger chunks for better performance - 500 deals per chunk
+            CHUNK_SIZE = 500
             chunks = chunk_list(mt_deals, CHUNK_SIZE)
             total_chunks = len(chunks)
 
-            # Process and insert each chunk
             for chunk_idx, chunk in enumerate(chunks, 1):
-                chunk_start_time = time.time()
-                chunk_volume = 0
-                chunk_profit = 0
-                symbols = set()
-                logins = set()
-
-                # Create MT5Deal objects for the chunk
                 mt5_deals_to_insert = []
 
                 for mt_deal in chunk:
-                    # Collect summary data
-                    chunk_volume += mt_deal.Volume
-                    chunk_profit += mt_deal.Profit
-                    symbols.add(mt_deal.Symbol)
-                    logins.add(mt_deal.Login)
-
                     # Convert timestamps to datetime objects
                     deal_time = convert_mt5_timestamp(mt_deal.Time)
 
@@ -142,43 +128,42 @@ async def process_single_deal(
                     )
                     mt5_deals_to_insert.append(new_deal)
 
-                try:
-                    # Insert all deals in the chunk with timeout
-                    session.add_all(mt5_deals_to_insert)
-                    try:
-                        await asyncio.wait_for(
-                            session.commit(), timeout=60
-                        )  # 60 second timeout
-                    except asyncio.TimeoutError:
-                        print(
-                            f"[ERROR] Database operation timed out for chunk {chunk_idx}"
-                        )
-                        await session.rollback()
-                        # Try again with a smaller batch
-                        if len(mt5_deals_to_insert) > 50:
-                            # Split into smaller batches of 50
-                            small_batches = [
-                                mt5_deals_to_insert[i : i + 50]
-                                for i in range(0, len(mt5_deals_to_insert), 50)
-                            ]
-                            for small_batch in small_batches:
-                                try:
-                                    session.add_all(small_batch)
-                                    await asyncio.wait_for(session.commit(), timeout=30)
-                                except Exception as batch_e:
-                                    print(
-                                        f"[ERROR] Failed to insert small batch: {str(batch_e)}"
-                                    )
-                                    await session.rollback()
+                # Process sub-chunks for better timeout handling
+                SUB_CHUNK_SIZE = 100  # Increased from 25 to 100
+                sub_chunks = [
+                    mt5_deals_to_insert[i : i + SUB_CHUNK_SIZE]
+                    for i in range(0, len(mt5_deals_to_insert), SUB_CHUNK_SIZE)
+                ]
 
-                except Exception as e:
-                    print(
-                        f"[ERROR] Failed to insert chunk {chunk_idx}/{total_chunks} for task {deal.id}"
-                    )
-                    print(f"[ERROR] Error details: {str(e)}")
-                    print(f"[ERROR] Traceback: {traceback.format_exc()}")
-                    await session.rollback()
-                    return False, deal.id
+                for sub_chunk in sub_chunks:
+                    retry_count = 0
+                    max_retries = 2  # Reduced from 3 to 2
+                    while retry_count < max_retries:
+                        try:
+                            session.add_all(sub_chunk)
+                            await asyncio.wait_for(
+                                session.commit(), timeout=45
+                            )  # Increased timeout
+                            break
+                        except asyncio.TimeoutError:
+                            print(
+                                f"[WARNING] Timeout on attempt {retry_count + 1} for chunk {chunk_idx}"
+                            )
+                            await session.rollback()
+                            retry_count += 1
+                            if retry_count == max_retries:
+                                print(
+                                    f"[ERROR] Failed after {max_retries} attempts for chunk {chunk_idx}"
+                                )
+                                return False, deal.id
+                            await asyncio.sleep(0.5)  # Reduced from 1 to 0.5 seconds
+                        except Exception as e:
+                            print(f"[ERROR] Failed to insert sub-chunk: {str(e)}")
+                            await session.rollback()
+                            return False, deal.id
+
+                # Clear memory after successful insertion
+                mt5_deals_to_insert.clear()
 
         return True, deal.id
     except Exception as e:
@@ -191,7 +176,7 @@ async def process_single_deal(
 async def process_deals(
     deal_ids: List[int], session: AsyncSession
 ) -> Tuple[bool, List[int], List[int]]:
-    """Process multiple deals asynchronously."""
+    """Process multiple deals asynchronously with controlled concurrency."""
     manager = None
     successful_deals = []
     failed_deals = []
@@ -214,21 +199,29 @@ async def process_deals(
         total_accounts_group = manager.UserGetByGroup("demo\\Nostro\\*")
         account_numbers = [account.Login for account in total_accounts_group]
 
-        # Create tasks for all deals with the same account numbers and manager
-        tasks = [
-            process_single_deal(deal, account_numbers, manager, session)
-            for deal in deals
-        ]
+        # Process deals in batches to control memory usage and concurrency
+        CONCURRENT_LIMIT = 5  # Increased from 3 to 5
+        for i in range(0, len(deals), CONCURRENT_LIMIT):
+            batch = deals[i : i + CONCURRENT_LIMIT]
 
-        # Run all tasks concurrently
-        results = await asyncio.gather(*tasks)
+            # Create tasks for the current batch
+            tasks = [
+                process_single_deal(deal, account_numbers, manager, session)
+                for deal in batch
+            ]
 
-        # Process results and update statuses
-        for success, deal_id in results:
-            if success:
-                successful_deals.append(deal_id)
-            else:
-                failed_deals.append(deal_id)
+            # Run current batch concurrently
+            batch_results = await asyncio.gather(*tasks)
+
+            # Process results
+            for success, deal_id in batch_results:
+                if success:
+                    successful_deals.append(deal_id)
+                else:
+                    failed_deals.append(deal_id)
+
+            # Brief pause between batches to allow system resources to stabilize
+            await asyncio.sleep(0.2)  # Reduced from 0.5 to 0.2 seconds
 
         # Update statuses in database
         statement = select(DealTask).where(DealTask.id.in_(successful_deals))
