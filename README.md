@@ -16,4 +16,6 @@ uv pip install -e .
 python run.py
 ```
 
-The application will be available at http://localhost:8000
+The application will be available at http://localhost:1234
+
+python export_data.py --table deals --exclude-columns "deal_task_id" --output deals.csv

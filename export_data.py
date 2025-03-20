@@ -93,6 +93,7 @@ def export_data(
     task_id=None,
     date=None,
     include_headers=True,
+    exclude_columns=None,
 ):
     """
     Export data from PostgreSQL to CSV using Polars.
@@ -104,9 +105,17 @@ def export_data(
         task_id: Optional task_id to filter deals by
         date: Optional date to filter data by (format: YYYY-MM-DD)
         include_headers: Whether to include headers in the CSV file
+        exclude_columns: List of column names to exclude from the export
     """
     start_time = time.time()
     conn = get_connection()
+
+    # Initialize exclude_columns if None
+    if exclude_columns is None:
+        exclude_columns = []
+
+    if exclude_columns:
+        logger.info(f"Excluding columns: {exclude_columns}")
 
     # Build WHERE clause based on filters
     where_conditions = []
@@ -143,9 +152,6 @@ def export_data(
 
     # Get column names
     columns = get_table_columns(conn, table_name)
-
-    # Prepare the output file
-    file_mode = "w" if include_headers else "a"
 
     # Calculate the number of batches
     num_batches = (total_rows // batch_size) + (1 if total_rows % batch_size > 0 else 0)
@@ -186,6 +192,11 @@ def export_data(
             # Convert to Polars DataFrame
             df = pl.DataFrame([dict(row) for row in batch_data])
 
+            # Drop excluded columns if they exist in the DataFrame
+            for col in exclude_columns:
+                if col in df.columns:
+                    df = df.drop(col)
+
             # Write to CSV
             if batch_num == 0 and include_headers:
                 # First batch with headers - use Python's open function to handle encoding
@@ -207,10 +218,16 @@ def export_data(
     conn.close()
 
 
-def export_task_and_deals(task_id, output_dir="exports", date=None):
+def export_task_and_deals(
+    task_id, output_dir="exports", date=None, exclude_columns=None
+):
     """Export a task and its associated deals to separate CSV files."""
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
+
+    # Initialize exclude_columns if None
+    if exclude_columns is None:
+        exclude_columns = []
 
     # Generate filenames with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -242,13 +259,27 @@ def export_task_and_deals(task_id, output_dir="exports", date=None):
 
         # Convert to Polars DataFrame and write to CSV
         task_df = pl.DataFrame([dict(task_data)])
-        task_df.write_csv(task_file)
+
+        # Drop excluded columns if they exist in the DataFrame
+        for col in exclude_columns:
+            if col in task_df.columns:
+                task_df = task_df.drop(col)
+
+        with open(task_file, "w", newline="", encoding="utf-8") as f:
+            task_df.write_csv(f, separator=",")
         logger.info(f"Task data exported to {task_file}")
 
     conn.close()
 
     # Export associated deals
-    export_data("deals", deals_file, batch_size=100000, task_id=task_id, date=date)
+    export_data(
+        "deals",
+        deals_file,
+        batch_size=100000,
+        task_id=task_id,
+        date=date,
+        exclude_columns=exclude_columns,
+    )
 
     logger.info(
         f"Export complete for task {task_id}{' on date ' + date if date else ''}"
@@ -278,8 +309,21 @@ if __name__ == "__main__":
         help="Export data for specific date (format: YYYY-MM-DD)",
         default=None,
     )
+    parser.add_argument(
+        "--exclude-columns",
+        type=str,
+        help="Comma-separated list of column names to exclude",
+        default="deal_task_id",
+    )
 
     args = parser.parse_args()
+
+    # Parse exclude_columns into a list
+    exclude_columns = (
+        [col.strip() for col in args.exclude_columns.split(",")]
+        if args.exclude_columns
+        else []
+    )
 
     # Create exports directory if it doesn't exist
     export_dir = "exports"
@@ -303,7 +347,19 @@ if __name__ == "__main__":
 
     # If task_id is specified, export both task and deals
     if args.task_id is not None and args.table == "deals":
-        export_task_and_deals(args.task_id, output_dir=export_dir, date=args.date)
+        export_task_and_deals(
+            args.task_id,
+            output_dir=export_dir,
+            date=args.date,
+            exclude_columns=exclude_columns,
+        )
     else:
         # Otherwise export the specified table
-        export_data(args.table, output_path, args.batch_size, args.task_id, args.date)
+        export_data(
+            args.table,
+            output_path,
+            args.batch_size,
+            args.task_id,
+            args.date,
+            exclude_columns=exclude_columns,
+        )
