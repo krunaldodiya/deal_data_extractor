@@ -224,19 +224,21 @@ async def process_deals(
             await asyncio.sleep(0.2)  # Reduced from 0.5 to 0.2 seconds
 
         # Update statuses in database
-        statement = select(DealTask).where(DealTask.id.in_(successful_deals))
-        results = await session.exec(statement)
-        success_deals = results.all()
+        if successful_deals:
+            statement = select(DealTask).where(DealTask.id.in_(successful_deals))
+            results = await session.exec(statement)
+            success_deals = results.all()
 
-        for deal in success_deals:
-            deal.status = DealStatus.SUCCESS
+            for deal in success_deals:
+                deal.status = DealStatus.SUCCESS
 
-        statement = select(DealTask).where(DealTask.id.in_(failed_deals))
-        results = await session.exec(statement)
-        failed_deals_db = results.all()
+        if failed_deals:
+            statement = select(DealTask).where(DealTask.id.in_(failed_deals))
+            results = await session.exec(statement)
+            failed_deals_db = results.all()
 
-        for deal in failed_deals_db:
-            deal.status = DealStatus.FAILED
+            for deal in failed_deals_db:
+                deal.status = DealStatus.FAILED
 
         await session.commit()
 
@@ -249,12 +251,12 @@ async def process_deals(
         # Update all deals to failed status in case of unexpected error
         statement = select(DealTask).where(DealTask.id.in_(deal_ids))
         results = await session.exec(statement)
-        deals = results.all()
+        failed_deals_db = results.all()
 
-        for deal in deals:
+        for deal in failed_deals_db:
             deal.status = DealStatus.FAILED
-        await session.commit()
 
+        await session.commit()
         return False, [], deal_ids
     finally:
         if manager:
