@@ -38,6 +38,7 @@ ENV/
 *.sqlite3
 *.sqlite
 *.log
+.env
 .env.local
 .env.development
 .env.test
