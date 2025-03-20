@@ -4,12 +4,11 @@ import asyncio
 from typing import List, Tuple
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import text
 from models import DealTask, MT5Deal
 
 
 async def delete_task(task_id: int, session: AsyncSession) -> bool:
-    """Delete a task by first deleting its associated deals using raw SQL"""
+    """Delete a task by first deleting its associated deals using SQLModel in batches"""
     try:
         # Get the task
         statement = select(DealTask).where(DealTask.id == task_id)
@@ -20,17 +19,41 @@ async def delete_task(task_id: int, session: AsyncSession) -> bool:
             print(f"Task {task_id} not found")
             return False
 
-        print(f"Deleting deals for task {task_id} using raw SQL")
+        print(f"Deleting deals for task {task_id} in batches")
 
-        # Use raw SQL to delete the deals first
-        delete_deals_sql = text(f"DELETE FROM deals WHERE deal_task_id = {task_id}")
-        await session.execute(delete_deals_sql)
+        # Delete deals in batches to handle large numbers efficiently
+        batch_size = 1000
+        total_deleted = 0
+
+        while True:
+            # Get a batch of deals
+            deals_statement = (
+                select(MT5Deal).where(MT5Deal.deal_task_id == task_id).limit(batch_size)
+            )
+            deals_results = await session.exec(deals_statement)
+            deals_batch = deals_results.all()
+
+            if not deals_batch:
+                break  # No more deals to delete
+
+            batch_count = len(deals_batch)
+            print(f"Deleting batch of {batch_count} deals for task {task_id}")
+
+            # Delete the deals in this batch
+            for deal in deals_batch:
+                await session.delete(deal)
+
+            await session.flush()
+            total_deleted += batch_count
+            print(f"Deleted {total_deleted} deals so far for task {task_id}")
 
         # Now delete the task
         print(f"Deleting task {task_id}")
         await session.delete(task)
         await session.commit()
-        print(f"Task {task_id} deleted successfully")
+        print(
+            f"Task {task_id} deleted successfully after removing {total_deleted} deals"
+        )
         return True
 
     except Exception as e:
