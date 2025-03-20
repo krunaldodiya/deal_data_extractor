@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Float,
     DateTime,
+    Numeric,
     CheckConstraint,
 )
 from pydantic import ConfigDict
@@ -65,40 +66,28 @@ class DealTaskRead(DealTaskBase):
 
 
 class MT5DealBase(SQLModel):
-    deal_id: int = Field(
-        sa_column=Column(BigInteger, unique=True, comment="Unsigned 64-bit integer")
-    )
-    action: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    deal_id: int = Field(sa_column=Column(Numeric(20, 0), unique=True))
+    action: int = Field(sa_column=Column(Integer))
     comment: str = Field(sa_column=Column(String(32)))
     commission: float = Field(sa_column=Column(Float))
     contract_size: float = Field(sa_column=Column(Float))
-    dealer: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
-    digits: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
-    digits_currency: int = Field(
-        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
-    )
-    entry: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
-    expert_id: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    dealer: int = Field(sa_column=Column(Numeric(20, 0)))
+    digits: int = Field(sa_column=Column(Integer))
+    digits_currency: int = Field(sa_column=Column(Integer))
+    entry: int = Field(sa_column=Column(Integer))
+    expert_id: int = Field(sa_column=Column(Numeric(20, 0)))
     external_id: str = Field(sa_column=Column(String(32)))
     fee: float = Field(sa_column=Column(Float))
-    flags: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    flags: int = Field(sa_column=Column(Numeric(20, 0)))
     gateway: str = Field(sa_column=Column(String(16)))
-    login: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    login: int = Field(sa_column=Column(Numeric(20, 0)))
     market_ask: float = Field(sa_column=Column(Float))
     market_bid: float = Field(sa_column=Column(Float))
     market_last: float = Field(sa_column=Column(Float))
-    modification_flags: int = Field(
-        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
-    )
+    modification_flags: int = Field(sa_column=Column(Integer))
     obsolete_value: float = Field(sa_column=Column(Float))
-    order_id: Optional[int] = Field(
-        default=None, sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    position_id: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    order_id: Optional[int] = Field(default=None, sa_column=Column(Numeric(20, 0)))
+    position_id: int = Field(sa_column=Column(Numeric(20, 0)))
     price: float = Field(sa_column=Column(Float))
     price_gateway: float = Field(sa_column=Column(Float))
     price_position: float = Field(sa_column=Column(Float))
@@ -108,26 +97,18 @@ class MT5DealBase(SQLModel):
     profit_raw: float = Field(sa_column=Column(Float))
     rate_margin: float = Field(sa_column=Column(Float))
     rate_profit: float = Field(sa_column=Column(Float))
-    reason: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    reason: int = Field(sa_column=Column(Integer))
     storage: float = Field(sa_column=Column(Float))
     symbol: str = Field(sa_column=Column(String(32)))
     tick_size: float = Field(sa_column=Column(Float))
     tick_value: float = Field(sa_column=Column(Float))
     time: datetime = Field(sa_column=Column(DateTime))
-    time_msc: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    time_msc: int = Field(sa_column=Column(Numeric(20, 0)))
     value: float = Field(sa_column=Column(Float))
-    volume: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
-    volume_closed: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    volume_closed_ext: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    volume_ext: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    volume: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_closed: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_closed_ext: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_ext: int = Field(sa_column=Column(Numeric(20, 0)))
     deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -149,42 +130,28 @@ class MT5Deal(SQLModel, table=True):
         CheckConstraint("volume_ext >= 0", name="ck_volume_ext_unsigned"),
     )
 
-    deal_id: int = Field(
-        sa_column=Column(
-            BigInteger, primary_key=True, comment="Unsigned 64-bit integer"
-        )
-    )
-    action: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    deal_id: int = Field(sa_column=Column(Numeric(20, 0), primary_key=True))
+    action: int = Field(sa_column=Column(Integer))
     comment: str = Field(sa_column=Column(String(32)))
     commission: float = Field(sa_column=Column(Float))
     contract_size: float = Field(sa_column=Column(Float))
-    dealer: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
-    digits: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
-    digits_currency: int = Field(
-        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
-    )
-    entry: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
-    expert_id: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    dealer: int = Field(sa_column=Column(Numeric(20, 0)))
+    digits: int = Field(sa_column=Column(Integer))
+    digits_currency: int = Field(sa_column=Column(Integer))
+    entry: int = Field(sa_column=Column(Integer))
+    expert_id: int = Field(sa_column=Column(Numeric(20, 0)))
     external_id: str = Field(sa_column=Column(String(32)))
     fee: float = Field(sa_column=Column(Float))
-    flags: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    flags: int = Field(sa_column=Column(Numeric(20, 0)))
     gateway: str = Field(sa_column=Column(String(16)))
-    login: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
+    login: int = Field(sa_column=Column(Numeric(20, 0)))
     market_ask: float = Field(sa_column=Column(Float))
     market_bid: float = Field(sa_column=Column(Float))
     market_last: float = Field(sa_column=Column(Float))
-    modification_flags: int = Field(
-        sa_column=Column(Integer, comment="Unsigned 32-bit integer")
-    )
+    modification_flags: int = Field(sa_column=Column(Integer))
     obsolete_value: float = Field(sa_column=Column(Float))
-    order_id: Optional[int] = Field(
-        default=None, sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    position_id: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    order_id: Optional[int] = Field(default=None, sa_column=Column(Numeric(20, 0)))
+    position_id: int = Field(sa_column=Column(Numeric(20, 0)))
     price: float = Field(sa_column=Column(Float))
     price_gateway: float = Field(sa_column=Column(Float))
     price_position: float = Field(sa_column=Column(Float))
@@ -194,26 +161,18 @@ class MT5Deal(SQLModel, table=True):
     profit_raw: float = Field(sa_column=Column(Float))
     rate_margin: float = Field(sa_column=Column(Float))
     rate_profit: float = Field(sa_column=Column(Float))
-    reason: int = Field(sa_column=Column(Integer, comment="Unsigned 32-bit integer"))
+    reason: int = Field(sa_column=Column(Integer))
     storage: float = Field(sa_column=Column(Float))
     symbol: str = Field(sa_column=Column(String(32)))
     tick_size: float = Field(sa_column=Column(Float))
     tick_value: float = Field(sa_column=Column(Float))
     time: datetime = Field(sa_column=Column(DateTime))
-    time_msc: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    time_msc: int = Field(sa_column=Column(Numeric(20, 0)))
     value: float = Field(sa_column=Column(Float))
-    volume: int = Field(sa_column=Column(BigInteger, comment="Unsigned 64-bit integer"))
-    volume_closed: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    volume_closed_ext: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
-    volume_ext: int = Field(
-        sa_column=Column(BigInteger, comment="Unsigned 64-bit integer")
-    )
+    volume: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_closed: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_closed_ext: int = Field(sa_column=Column(Numeric(20, 0)))
+    volume_ext: int = Field(sa_column=Column(Numeric(20, 0)))
     deal_task_id: int = Field(foreign_key="deal_tasks.id", ondelete="CASCADE")
     deal_task: DealTask = Relationship(back_populates="deals")
 
