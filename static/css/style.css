@@ -246,3 +246,12 @@ tr:hover {
     transform: rotate(360deg);
   }
 }
+
+/* Status colors */
+.bg-green-100 {
+  background-color: #dcfce7 !important;
+}
+
+.bg-red-100 {
+  background-color: #fee2e2 !important;
+}

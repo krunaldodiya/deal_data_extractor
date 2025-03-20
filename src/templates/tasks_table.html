@@ -20,7 +20,9 @@
       </thead>
       <tbody>
         {% for task in tasks %}
-        <tr class="border-b hover:bg-gray-50">
+        <tr
+          class="border-b hover:bg-gray-50 {% if task.status.lower() == 'success' %}bg-green-100{% endif %} {% if task.status.lower() == 'failed' %}bg-red-100{% endif %}"
+        >
           <td class="py-3 px-4">
             <input
               type="checkbox"
@@ -39,40 +41,61 @@
       </tbody>
     </table>
 
-    <div id="action-buttons" class="mt-4 flex space-x-4" style="display: none">
-      <button
-        type="button"
-        id="process-selected"
-        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-        hx-post="/process"
-        hx-include="[name='selected_tasks']"
-        hx-target="#tasks-container"
-        hx-swap="outerHTML"
-      >
-        Process
-      </button>
-      <button
-        type="button"
-        id="delete-selected"
-        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-        hx-post="/delete"
-        hx-include="[name='selected_tasks']"
-        hx-target="#tasks-container"
-        hx-swap="outerHTML"
-        hx-confirm="Are you sure you want to delete the selected tasks?"
-      >
-        Delete
-      </button>
-    </div>
-  </form>
+    <!-- Fixed bottom bar for buttons and messages -->
+    <div
+      id="fixed-bottom-bar"
+      style="
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-top: 1px solid #e5e7eb;
+        padding: 10px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+      "
+    >
+      <div id="action-buttons" class="flex space-x-4" style="display: none">
+        <button
+          type="button"
+          id="process-selected"
+          class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+          hx-post="/process"
+          hx-include="[name='selected_tasks']"
+          hx-target="#tasks-container"
+          hx-swap="outerHTML"
+        >
+          Process
+        </button>
+        <button
+          type="button"
+          id="delete-selected"
+          class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          hx-post="/delete"
+          hx-include="[name='selected_tasks']"
+          hx-target="#tasks-container"
+          hx-swap="outerHTML"
+          hx-confirm="Are you sure you want to delete the selected tasks?"
+        >
+          Delete
+        </button>
+      </div>
 
-  {% if message %}
-  <div
-    class="mt-4 p-4 {% if 'error' in message %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded"
-  >
-    {{ message }}
-  </div>
-  {% endif %}
+      {% if message %}
+      <div
+        class="mt-2 p-4 {% if 'error' in message %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded"
+        id="status-message"
+      >
+        {{ message }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Add spacing at the bottom to prevent content from being hidden by the fixed bar -->
+    <div style="height: 100px"></div>
+  </form>
 </div>
 
 <script>
@@ -87,10 +110,13 @@
   function updateButtonVisibility() {
     const checkboxes = document.getElementsByClassName("task-checkbox");
     const actionButtons = document.getElementById("action-buttons");
+    const fixedBottomBar = document.getElementById("fixed-bottom-bar");
     const hasChecked = Array.from(checkboxes).some(
       (checkbox) => checkbox.checked
     );
+
     actionButtons.style.display = hasChecked ? "flex" : "none";
+    fixedBottomBar.style.display = hasChecked ? "flex" : "none";
 
     // Also update the "check all" checkbox
     const checkAll = document.getElementById("check-all");
@@ -200,6 +226,13 @@
         deleteBtn.classList.remove("opacity-70", "cursor-not-allowed");
       }
     }
+
+    // If a status message exists, ensure the fixed bottom bar is visible
+    const statusMessage = document.getElementById("status-message");
+    const fixedBottomBar = document.getElementById("fixed-bottom-bar");
+    if (statusMessage && fixedBottomBar) {
+      fixedBottomBar.style.display = "flex";
+    }
   });
 
   // Run after htmx content is swapped
@@ -209,13 +242,49 @@
 
     // Initialize button visibility
     updateButtonVisibility();
+
+    // Apply row colors after content swap
+    applyRowColors();
+
+    // Show fixed bottom bar if there's a message
+    const statusMessage = document.getElementById("status-message");
+    const fixedBottomBar = document.getElementById("fixed-bottom-bar");
+    if (statusMessage && fixedBottomBar) {
+      fixedBottomBar.style.display = "flex";
+    }
   });
 
   // Ensure form is fixed on page load
   document.addEventListener("DOMContentLoaded", function () {
     fixAddTaskForm();
     updateButtonVisibility();
+
+    // Apply row colors on page load
+    applyRowColors();
+
+    // Show fixed bottom bar if there's a message
+    const statusMessage = document.getElementById("status-message");
+    const fixedBottomBar = document.getElementById("fixed-bottom-bar");
+    if (statusMessage && fixedBottomBar) {
+      fixedBottomBar.style.display = "flex";
+    }
   });
+
+  // Apply color to rows based on status
+  function applyRowColors() {
+    const rows = document.querySelectorAll("tr");
+    rows.forEach((row) => {
+      const statusCell = row.querySelector("td:last-child");
+      if (statusCell) {
+        const status = statusCell.textContent.trim().toLowerCase();
+        if (status === "success") {
+          row.style.backgroundColor = "#dcfce7";
+        } else if (status === "failed") {
+          row.style.backgroundColor = "#fee2e2";
+        }
+      }
+    });
+  }
 </script>
 
 {% else %}
