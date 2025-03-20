@@ -4,14 +4,13 @@ import asyncio
 from typing import List, Tuple
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from models import DealTask, MT5Deal
-from sqlalchemy import text
+from models import DealTask
 
 
 async def delete_task(task_id: int, session: AsyncSession) -> bool:
     """Delete a task and properly handle associated deals"""
     try:
-        # Get the task
+        # Get the task with its relationships
         statement = select(DealTask).where(DealTask.id == task_id)
         results = await session.exec(statement)
         task = results.one_or_none()
@@ -20,9 +19,8 @@ async def delete_task(task_id: int, session: AsyncSession) -> bool:
             print(f"Task {task_id} not found")
             return False
 
-        # Use direct SQL to delete the task, which will cascade delete all associated deals
-        delete_statement = text("DELETE FROM deal_tasks WHERE id = :task_id")
-        await session.execute(delete_statement, {"task_id": task_id})
+        # Delete the task - this will trigger the cascade delete of associated deals
+        await session.delete(task)
         await session.commit()
         return True
 
